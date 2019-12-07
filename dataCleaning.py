@@ -1,23 +1,8 @@
 import os
 import pandas as pd
 from datetime import datetime
-
-irrelavent = ['disable_communication', 'friends', 'is_backing']
-redundant = ['country_displayable_name', 'currency_symbol', 'currency_trailing_code', 'current_currency']
-extras = []
-
-
-# why fields were let go
-#  'country_displayable_name' - redundant
-#   'currency_symbol' - redundant
-#   'currency_trailing_code' - r.
-#   'current_currency' - r.
-#   'disable_communication' - very few projects, probably turned off after project failed.
-#  'is_backing' - very few records contain info.
-#
-
-# explanation for remaining fields:
-#
+import json
+import re
 
 
 # Our data is originaly split amongst many small csv files.
@@ -53,25 +38,50 @@ def make_dataframe(path=r'rawData', out=None,
         print('Saved data frame to', cache)
     return df
 
+
 def convert_time(df, timefields):
     for col in timefields:
         df[col] = df[col].apply(datetime.utcfromtimestamp)
 
+
+def convert_goal(df):
+    df['goal'] = df.apply(lambda row: round(row['goal']*row['fx_rate']), axis=1)
+    df.drop(columns='fx_rate', inplace=True)
+    ind = df[df['goal'] == 0].index
+    df.drop(ind, inplace=True)
+
+def extract_creator(df):
+    pat = '\A{"id":([0-9]*),'
+    ids = df['creator']
+    ids = ids.map(lambda x: int(re.search(pat, x).group(1)))
+    df['creator'] = ids
+
+
+def extract_catagories(df):
+    cats = df['category']
+    cats = cats.apply(json.loads)
+    mcat = cats.apply(lambda x: int(x.get('parent_id', 0)))
+    cats = cats.apply(lambda x: int(x.get('id', 0)))
+    df['category'] = cats
+    df['parent_category'] = mcat
+
+
+def remove_duplicates(df):
+    df.sort_values(by='state_changed_at', ascending=False, na_position='first', inplace=True)
+    df.drop_duplicates(subset='id', inplace=True)
+
+
+def fix_state(df):
+    ind = df[df['state'] == 'live'].index
+    df.drop(ind, inplace=True)
+    stat = df['state'].map(lambda x: x if x == 'successful' else 'failed')
+    df['state'] = stat
+
+#Adds ratio between goal and collected.
+def add_ratio(df):
+    df['ratio'] = df.apply(lambda row: row['converted_pledged_amount'] / row['goal'], axis=1)
+
+
 if __name__ == '__main__':
     df = make_dataframe()
-    timefields = ['created_at', 'deadline', 'launched_at']
-    convert_time(df, timefields)
-    print(df.loc[1,'created_at'])
-
-
-
-
-
-    # out=r'/home/ez/PycharmProjects/kickstarter/united.csv'
-    # cols = list(df.columns.values)
-    # print(cols)
-    # y = len(df.index)
-    # print('number of records:', y)
-    # num_nulls(df)
-    # x = df['id'].nunique()
-    # print('number of unique values', x, 'meaning there are ', y-x,'duplicates')
+    extract_catagories(df)
