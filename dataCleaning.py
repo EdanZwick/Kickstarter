@@ -44,6 +44,16 @@ def convert_time(df, timefields):
         df[col] = df[col].apply(datetime.utcfromtimestamp)
 
 
+def extract_month_and_year(df, timefields):
+    for col in timefields:
+        months = []
+        years = []
+        for row in df[col]:
+            months.append(row.month)
+            years.append(row.year)
+        df[col+'_month'] = months
+        df[col+'_year'] = years
+
 def convert_goal(df):
     df['goal'] = df.apply(lambda row: round(row['goal']*row['fx_rate']), axis=1)
     df.drop(columns='fx_rate', inplace=True)
@@ -60,10 +70,22 @@ def extract_creator(df):
 def extract_catagories(df):
     cats = df['category']
     cats = cats.apply(json.loads)
-    mcat = cats.apply(lambda x: int(x.get('parent_id', 0)))
-    cats = cats.apply(lambda x: int(x.get('id', 0)))
-    df['category'] = cats
-    df['parent_category'] = mcat
+
+    parent_cats_ids = []
+    parent_cats_names = []
+    cats_ids = []
+    cats_names = []
+
+    for cat in cats:
+        parent_cats_ids.append(int(cat.get('parent_id', 0)))
+        parent_cats_names.append(cat.get('slug', '/').split('/')[0].lower())
+        cats_ids.append(int(cat.get('id', 0)))
+        cats_names.append(cat.get('name', "").lower())
+
+    df['category'] = cats_ids
+    df['parent_category'] = parent_cats_ids
+    df['category_name'] = cats_names
+    df['parent_category_name'] = parent_cats_names
 
 
 def remove_duplicates(df):
@@ -80,6 +102,16 @@ def fix_state(df):
 #Adds ratio between goal and collected.
 def add_ratio(df):
     df['ratio'] = df.apply(lambda row: row['converted_pledged_amount'] / row['goal'], axis=1)
+
+
+def encode_string_enums(df, col, str_values, number_values):
+    mapping = { str_val:number_val for str_val, number_val in zip(str_values, number_values)}
+    df = df[col] = df[col].map(mapping)
+
+
+def add_destination_delta_in_months(df):
+    delta = lambda r: (r['deadline'] - r['launched_at']).components.days
+    df['destination_delta_in_months'] = df.apply(lambda row: delta(row), axis=1)
 
 
 if __name__ == '__main__':
