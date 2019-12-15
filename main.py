@@ -93,7 +93,7 @@ dc.encode_string_enums(df, 'state', ['failed','successful'], [0,1])
 
 
 #models
-# knn.run_model(df)  #73 precision
-# logistic.run_model(df) #67.8 precision
-# forest.run_model(df) #75 percision
+knn.run_model(df)  #73 precision
+logistic.run_model(df) #67.8 precision
+forest.run_model(df) #75 percision
 gradient_boosting.run_model(df)
