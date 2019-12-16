@@ -4,3 +4,4 @@ seaborn
 plotly
 squarify
 sklearn
+jupyter

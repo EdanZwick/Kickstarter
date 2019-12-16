@@ -1,8 +1,9 @@
-import os
-import pandas as pd
-from datetime import datetime
 import json
+import os
 import re
+from datetime import datetime
+
+import pandas as pd
 
 
 # Our data is originaly split amongst many small csv files.
@@ -25,7 +26,7 @@ def make_dataframe(path=r'rawData', out=None,
         print('read dataframe from cache', cache)
         return df
     chunk_list = []
-    for fileName in os.listdir(path):
+    for fileName in sorted(os.listdir(path)):  # Sort to be deterministic
         if fileName.endswith('.csv'):
             chunk = pd.read_csv(os.path.join(path, fileName))
             chunk_list.append(chunk)
@@ -51,14 +52,16 @@ def extract_month_and_year(df, timefields):
         for row in df[col]:
             months.append(row.month)
             years.append(row.year)
-        df[col+'_month'] = months
-        df[col+'_year'] = years
+        df[col + '_month'] = months
+        df[col + '_year'] = years
+
 
 def convert_goal(df):
-    df['goal'] = df.apply(lambda row: round(row['goal']*row['fx_rate']), axis=1)
+    df['goal'] = df.apply(lambda row: round(row['goal'] * row['fx_rate']), axis=1)
     df.drop(columns='fx_rate', inplace=True)
     ind = df[df['goal'] == 0].index
     df.drop(ind, inplace=True)
+
 
 def extract_creator(df):
     pat = '\A{"id":([0-9]*),'
@@ -99,13 +102,14 @@ def fix_state(df):
     stat = df['state'].map(lambda x: x if x == 'successful' else 'failed')
     df['state'] = stat
 
-#Adds ratio between goal and collected.
+
+# Adds ratio between goal and collected.
 def add_ratio(df):
     df['ratio'] = df.apply(lambda row: row['converted_pledged_amount'] / row['goal'], axis=1)
 
 
 def encode_string_enums(df, col, str_values, number_values):
-    mapping = { str_val:number_val for str_val, number_val in zip(str_values, number_values)}
+    mapping = {str_val: number_val for str_val, number_val in zip(str_values, number_values)}
     df = df[col] = df[col].map(mapping)
 
 
