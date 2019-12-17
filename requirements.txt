@@ -4,3 +4,5 @@ seaborn
 plotly
 squarify
 sklearn
+jupyter
+lightGBM

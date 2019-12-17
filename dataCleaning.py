@@ -7,6 +7,7 @@ import urllib.request
 import shutil
 import zipfile
 
+
 datasets = {
     'December 2019': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2019-11-14T03_20_27_004Z.zip',
     'December 2018': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2018-12-13T03_20_05_701Z.zip',
@@ -54,7 +55,7 @@ def make_dataframe(path=r'rawData', out=None,
 
 def makeSingleDf(path):
     chunk_list = []
-    for fileName in os.listdir(path):
+    for fileName in sorted(os.listdir(path)):  # Sort to be deterministic
         if fileName.endswith('.csv'):
             chunk = pd.read_csv(os.path.join(path, fileName))
             chunk_list.append(chunk)
