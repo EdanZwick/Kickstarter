@@ -5,3 +5,4 @@ plotly
 squarify
 sklearn
 jupyter
+lightGBM

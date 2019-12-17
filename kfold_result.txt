@@ -106,3 +106,5 @@ GradientBoosting: Accuracy for params=(0.13999999999999999, 2) is 74.00119481015
 GradientBoosting: Accuracy for params=(0.13999999999999999, 3) is 76.02072067557309%
 GradientBoosting: Accuracy for params=(0.13999999999999999, 4) is 77.07066752428798%
 GradientBoosting: Accuracy for params=(0.13999999999999999, 5) is 77.70779666268366%
+Light GBM: Accuracy with scaler  is 78.14691947970694%
+Light GBM: Accuracy  is 78.14691947970694%
