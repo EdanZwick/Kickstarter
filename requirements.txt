@@ -5,4 +5,7 @@ plotly
 squarify
 sklearn
 jupyter
+gensim
+vaderSentimentx
+nltk
 lightGBM

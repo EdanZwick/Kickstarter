@@ -43,16 +43,16 @@ timefields = ['created_at','deadline','launched_at','state_changed_at']
 dc.convert_time(df,timefields)
 print('sanity check')
 
-with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-    print(df.head())
+# with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
+#     print(df.head())
 
 
 dc.extract_creator(df) #replaces the creator json with creator id int
 dc.extract_catagories(df) #gets project catagory data
 
-
-with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
-    print(df.head())
+#
+# with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
+#     print(df.head())
 
 
 print('There are originally ' + str(num_recs) + ' records in data')
@@ -89,11 +89,13 @@ dc.add_destination_delta_in_months(df)
 #preparing to train
 df = df.loc[df['state'].isin(['failed','successful'])]
 dc.encode_string_enums(df, 'state', ['failed','successful'], [0,1])
+# dc.make_word_embeddings(df)
 
-
+dc.set_semantics(df)
 
 #models
+
 knn.run_model(df)  #73 precision
 logistic.run_model(df) #67.8 precision
 forest.run_model(df) #75 percision
-gradient_boosting.run_model(df)
+gradient_boosting.run_model(df) #77 and 79 semantic parsing
