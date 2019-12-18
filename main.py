@@ -23,7 +23,7 @@ print()
 print('There are originaly '+ str(num_recs) + ' records in data')
 
 redundant = ['country_displayable_name', 'currency_symbol', 'currency_trailing_code', 'current_currency',
-             'source_url','disable_communication', 'profile','urls','photo', 'static_usd_rate', 'usd_pledged', 'usd_type']
+             'source_url','disable_communication', 'profile','urls','photo', 'usd_pledged', 'usd_type']
 df.drop(columns=redundant, inplace=True)
 print('sanity check, print new columns:')
 cols = list(df.columns.values)
@@ -91,11 +91,12 @@ df = df.loc[df['state'].isin(['failed','successful'])]
 dc.encode_string_enums(df, 'state', ['failed','successful'], [0,1])
 # dc.make_word_embeddings(df)
 
-dc.set_semantics(df)
 
+dc.set_semantics(df)
+dc.set_text_statistics(df)
 #models
 
-knn.run_model(df)  #73 precision
-logistic.run_model(df) #67.8 precision
-forest.run_model(df) #75 percision
+knn.run_model(df)  #73 precision and 69 semantic parsing
+logistic.run_model(df) #67.8 precision and 69 semantic parsing and 69 semantic parsing
+forest.run_model(df) #75 percision and 77 semantic parsing
 gradient_boosting.run_model(df) #77 and 79 semantic parsing
