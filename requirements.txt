@@ -6,6 +6,6 @@ squarify
 sklearn
 jupyter
 gensim
-vaderSentimentx
+vaderSentiment
 nltk
 lightGBM
