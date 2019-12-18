@@ -11,7 +11,7 @@ lower_bound = 100
 upper_bound = 1000
 step = 50
 
-def run_model(df):
+def run_model(df, num_trees = None):
 
     X = df[input_fields]
     y = df['state']
@@ -25,33 +25,36 @@ def run_model(df):
 
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.3, random_state=1)
 
-    error = []
-    # Calculating error for number of trees between 1 and 100
-    for i in range(lower_bound, upper_bound+1, step):
-        print('forest: ' + str(i))
-        forest = RandomForestClassifier(n_estimators=i)
-        forest.fit(X_train, y_train)
-        pred_i = forest.predict(X_val)
-        error.append(np.mean(pred_i != y_val))
+    if num_trees is None:
+        error = []
+        # Calculating error for number of trees between 1 and 100
+        for i in range(lower_bound, upper_bound+1, step):
+            print('forest: ' + str(i))
+            forest = RandomForestClassifier(n_estimators=i)
+            forest.fit(X_train, y_train)
+            pred_i = forest.predict(X_val)
+            error.append(np.mean(pred_i != y_val))
 
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(range(lower_bound, upper_bound+1, step), error, color='red', linestyle='dashed', marker='o',
-             markerfacecolor='blue', markersize=10)
+        plt.figure(figsize=(12, 6))
+        plt.plot(range(lower_bound, upper_bound+1, step), error, color='red', linestyle='dashed', marker='o',
+                 markerfacecolor='blue', markersize=10)
 
-    plt.title('Error Rate Number of trees')
-    plt.xlabel('Number of trees')
-    plt.ylabel('Mean Error Cross Validation')
+        plt.title('Error Rate Number of trees')
+        plt.xlabel('Number of trees')
+        plt.ylabel('Mean Error Cross Validation')
 
-    idx = error.index(min(error))
+        idx = error.index(min(error))
 
-    print('chosen number of trees: ' + str(lower_bound + idx *step))
+        print('chosen number of trees: ' + str(lower_bound + idx *step))
+        num_trees = lower_bound + idx *step
 
-    forest = RandomForestClassifier(n_estimators=lower_bound + idx * step)
+    forest = RandomForestClassifier(n_estimators=num_trees)
     forest.fit(X_train, y_train)
     pred = forest.predict(X_test)
     print('precision is: ' + str(1-np.mean(pred != y_test)))
     plt.show()
+    return (1-np.mean(pred != y_test))
 
 
 

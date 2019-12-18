@@ -7,7 +7,6 @@ import urllib.request
 import shutil
 import zipfile
 
-
 datasets = {
     'December 2019': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2019-11-14T03_20_27_004Z.zip',
     'December 2018': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2018-12-13T03_20_05_701Z.zip',
@@ -159,6 +158,7 @@ def fix_state(df):
     df.drop(ind, inplace=True)
     stat = df['state'].map(lambda x: x if x == 'successful' else 'failed')
     df['state'] = stat
+
 
 def encode_string_enums(df, col, str_values, number_values):
     mapping = {str_val: number_val for str_val, number_val in zip(str_values, number_values)}

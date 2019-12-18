@@ -1,3 +1,4 @@
+import numpy as np
 import matplotlib.pyplot as plt
 import dataCleaning as dc
 import seaborn as sns
@@ -5,12 +6,14 @@ import pandas as pd
 import plotly.graph_objs as go
 from plotly.offline import init_notebook_mode, iplot, plot
 import squarify
+
 plt.style.use('seaborn')
 
-def plot_success_failure(df, col, ax = None):
+
+def plot_success_failure(df, col, ax=None):
     plt.style.use('seaborn')
     if ax is None:
-        _ , ax = plt.subplots(1, 1)
+        _, ax = plt.subplots(1, 1)
     suc = df.loc[df['state'] == 'successful']
     f = df.loc[df['state'] == 'failed']
     sc = suc[col].value_counts()
@@ -18,15 +21,18 @@ def plot_success_failure(df, col, ax = None):
     d = pd.DataFrame({'Successful': sc, 'failed': sf})
     d.plot(ax=ax, kind='bar')
 
+
 def plot_success_by_country(df):
     plot_success_failure(df, 'country')
     plt.title('Success by origin country')
     plt.show()
 
+
 def plot_success_by_category(df):
     plot_success_failure(df, 'parent_category_name')
     plt.title('Success by parent category')
     plt.show()
+
 
 def plot_success_by_sub_category(df):
     parents = df.parent_category_name.unique()
@@ -35,8 +41,9 @@ def plot_success_by_sub_category(df):
             fig, axes = plt.subplots(figsize=[20, 10], nrows=1, ncols=3, sharey='row')
         subpd = df.loc[df['parent_category_name'] == category]
         plot_success_failure(subpd, 'category_name', ax=axes[(i % 3)])
-        axes[(i%3)].set_title(category)
+        axes[(i % 3)].set_title(category)
     plt.show()
+
 
 def plot_success_by_launched_year(df):
     suc = df.loc[df['state'] == 'successful']
@@ -47,6 +54,7 @@ def plot_success_by_launched_year(df):
     d.plot.bar()
     plt.show()
 
+
 def plot_success_by_launched_month(df):
     plot_success_failure(df, 'launched_at_month')
     plt.title('Success by the month of campaign launch')
@@ -54,7 +62,7 @@ def plot_success_by_launched_month(df):
 
 
 def plot_distribution_by_state(df):
-    state = round(df["state"].value_counts() / len(df["state"]) * 100,2)
+    state = round(df["state"].value_counts() / len(df["state"]) * 100, 2)
     labels = list(state.index)
     values = list(state.values)
     trace1 = go.Pie(labels=labels, values=values, marker=dict(colors=['red']))
@@ -62,7 +70,8 @@ def plot_distribution_by_state(df):
     fig = go.Figure(data=[trace1], layout=layout)
     iplot(fig)
 
-def plot_distriubtion_by_state_slice(df, explode = [0,0,.1,.2, .4]):
+
+def plot_distriubtion_by_state_slice(df, explode=[0, 0, .1, .2, .4]):
     plt.style.use(['seaborn-pastel'])
     fig, ax = plt.subplots(1, 1, dpi=100)
     fig.set_facecolor('xkcd:pale grey')
@@ -89,20 +98,47 @@ def plot_distribuition_by_state_squarify(df):
     total = state.values.sum()
     others = total - failed - successful + 0.001
 
-    squarify.plot(sizes=[successful,failed, others],
-              label=["Failed ("+str(round(float(failed)/total * 100.,2))+"%)",
-                     "Successful ("+str(round(float(successful)/total * 100.,2))+"%)",
-                     "Others ("+str(round(float(others)/total * 100.,2))+"%)"], color=["blue","red","green"], alpha=.4 )
-    plt.title('State', fontsize = 20)
+    squarify.plot(sizes=[successful, failed, others],
+                  label=["Failed (" + str(round(float(failed) / total * 100., 2)) + "%)",
+                         "Successful (" + str(round(float(successful) / total * 100., 2)) + "%)",
+                         "Others (" + str(round(float(others) / total * 100., 2)) + "%)"],
+                  color=["blue", "red", "green"], alpha=.4)
+    plt.title('State', fontsize=20)
     plt.axis('off')
     plt.show()
 
 
+def plot_precision(results):
+    names = [name for name in results]
+    precision = [results[name] for name in results]
+    sns.barplot(x=names, y=precision)
+    plt.title('Precision by model')
+    plt.show()
+
+
+def plot_success_over_time(df):
+    data = df[['deadline_month', 'deadline_year', 'state']]
+    years = data['deadline_year'].unique()
+    months = data['deadline_month']
+    statistics = {}
+    for year in years:
+        for month in months:
+            tmp = data.loc[(data['deadline_month']==month) & (data['deadline_year']==year)]
+            suc = len(tmp.loc[tmp['state']=='successful'])
+            statistics[(str(month) + '/' + str(year))] = suc / len(tmp)
+    print(statistics)
+
+    # group coloms by year + month
+    # calculate percentage
+    # plot as distribution.
+
+
 if __name__ == '__main__':
-       df = pd.read_pickle('tmp.pickle')
-       #plot_success_by_country(df)
-       #plot_distriubtion_by_state_slice(df, explode=[0, 0])
-       #plot_success_by_category(df)
-       plot_success_by_sub_category(df)
-       #print(plt.style.available)
-       #plot_success_by_sub_category_name(df)
+    df = pd.read_pickle('tmp.pickle')
+    # plot_success_by_country(df)
+    # plot_distriubtion_by_state_slice(df, explode=[0, 0])
+    # plot_success_by_category(df)
+    # plot_success_by_sub_category(df)
+    # print(plt.style.available)
+    # plot_success_by_sub_category_name(df)
+    plot_success_over_time(df)
