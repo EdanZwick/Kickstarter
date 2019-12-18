@@ -9,7 +9,8 @@ import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec, FastText
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from nltk.corpus import stopwords
+import nltk
+
 datasets = {
     'December 2019': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2019-11-14T03_20_27_004Z.zip',
     'December 2018': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2018-12-13T03_20_05_701Z.zip',
@@ -222,16 +223,19 @@ def avg_word(sentence):
   return float(sum(len(word) for word in words))/len(words)
 
 def set_text_statistics(df):
-    stop = stopwords.words('english')
+    nltk.download('stopwords')
+    df_str = df["blurb"].astype(str)
+
+    stopwords = set(nltk.corpus.stopwords.words('english'))
     df["name_num_words"]  = df["name"].apply(lambda x: len(x.split()))
     df["name_num_chars"]  = df["name"].apply(lambda x: len(x.replace(" ","")))
     df['name_avg_word_length'] = df['name'].apply(lambda x: avg_word(x))
-    df["blurb_num_words"] = df["blurb"].str.apply(lambda x: len(x.split()))
-    df["blurb_num_chars"] = df["blurb"].str.apply(lambda x: len(x.replace(" ","")))
-    df['blurb_avg_word_length'] = df['blurb'].str.apply(lambda x: avg_word(x))
-    df['blurb_stopwords'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x in stop]))
+    df["blurb_num_words"] = df_str.apply(lambda x: len(x.split()))
+    df["blurb_num_chars"]  = df_str.apply(lambda x: len(x.replace(" ","")))
+    df['blurb_avg_word_length'] = df_str.apply(lambda x: avg_word(x))
+    df['blurb_stopwords'] = df_str.apply(lambda x: len([x for x in x.split() if x in stopwords]))
     df['name_upper'] = df['name'].apply(lambda x: len([x for x in x.split() if x.isupper()]))
-    df['blurb_upper'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x.isupper()]))
+    df['blurb_upper'] = df_str.apply(lambda x: len([x for x in x.split() if x.isupper()]))
 
 
 
