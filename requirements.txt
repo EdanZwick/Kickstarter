@@ -8,3 +8,4 @@ jupyter
 gensim
 vaderSentimentx
 nltk
+lightGBM

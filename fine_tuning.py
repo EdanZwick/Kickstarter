@@ -1,4 +1,5 @@
 import numpy as np
+from lightgbm import LGBMClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import KFold
@@ -102,8 +103,27 @@ def fine_tune_gb():
                     f"GradientBoosting: Accuracy for params={(learn_rate, depth)}{' with scaler ' if scale else ''} is {acc * 100}%")
 
 
+def fine_tune_light_gbm():
+    data = get_data()
+    kf = KFold()
+    for scale in [True, False]:
+        acc = 0
+        for train_index, val_index in kf.split(data.train_x):
+            gbm = LGBMClassifier(random_state=42)
+            train_x, train_y = _get_kfold(data, train_index)
+            val_x, val_y = _get_kfold(data, val_index)
+            if scale:
+                train_x, val_x = _scale(train_x, val_x)
+            gbm.fit(train_x, train_y)
+            acc += accuracy_score(val_y, gbm.predict(val_x))
+        acc /= N_SPLITS
+        print(
+            f"Light GBM: Accuracy {'with scaler ' if scale else ''} is {acc * 100}%")
+
+
 if __name__ == '__main__':
     fine_tune_knn()
     fine_tune_forest()
     vanila_forest()
     fine_tune_gb()
+    fine_tune_light_gbm()

@@ -1,17 +1,25 @@
-import json
 import os
-import re
 from datetime import datetime
-
+import json
+import re
+import urllib.request
+import shutil
+import zipfile
 import numpy as np
 import pandas as pd
 from gensim.models import Word2Vec, FastText
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
+datasets = {
+    'December 2019': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2019-11-14T03_20_27_004Z.zip',
+    'December 2018': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2018-12-13T03_20_05_701Z.zip',
+    'December 2017': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2017-12-15T10_20_51_610Z.zip',
+    'December 2016': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2016-12-15T22_20_52_411Z.zip',
+    'December 2015': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2015-12-17T12_09_06_107Z.zip'}
 
 
-# Our data is originaly split amongst many small csv files.
-# This method creats a single data frame from all of them.
+# Our data is originally split amongst many small csv files.
+# This method creates a single data frame from all of them.
 def make_dataframe(path=r'rawData', out=None,
                    cache='rick.pickle'):
     """
@@ -27,8 +35,27 @@ def make_dataframe(path=r'rawData', out=None,
     """
     if cache is not None and os.path.isfile(cache):
         df = pd.read_pickle(cache)
-        print('read dataframe from cache', cache)
+        print('read dataframe from cache', cache, sep=' ')
         return df
+    if out is not None and os.path.isfile(out):
+        print('read dataframe from csv file', os.path.join(os.getcwd(), out), sep=' ')
+        return pd.read_csv(os.path.join(os.getcwd(), out))
+    organizeData()
+    df = makeSingleDf(path + '/' + 'December 2019')
+    for key in datasets:
+        print(key)
+        df = pd.concat([df, makeSingleDf(path + '/' + key)], ignore_index=True, sort=True)
+        remove_duplicates(df)
+    if out is not None:
+        df.to_csv(path_or_buf=out, chunksize=10000)
+    print('there are ', len(df.index), ' records in data set', sep='')
+    if cache is not None:
+        df.to_pickle(path=cache)
+        print('Saved data frame to', cache)
+    return df
+
+
+def makeSingleDf(path):
     chunk_list = []
     for fileName in sorted(os.listdir(path)):  # Sort to be deterministic
         if fileName.endswith('.csv'):
@@ -36,12 +63,41 @@ def make_dataframe(path=r'rawData', out=None,
             chunk_list.append(chunk)
     print('Read ', len(chunk_list), 'csv files')
     df = pd.concat(chunk_list, ignore_index=True)
-    if out is not None:
-        df.to_csv(path_or_buf=out, chunksize=10000)
-    if cache is not None:
-        df.to_pickle(path=cache)
-        print('Saved data frame to', cache)
     return df
+
+
+def organizeData():
+    downloadData()
+    for key in datasets:
+        extract(r'rawData/' + key)
+
+
+def downloadData():
+    fileName = r'rawData/'
+    directory = os.path.dirname(fileName)
+    if os.path.exists(directory):
+        print('files already downloaded')
+        return
+    os.makedirs(directory)
+    print('Downloading datasets, expect this to take a few minutes')
+    for generation in datasets:
+        downloadFile(fileName + generation + '.zip', datasets[generation])
+        print('Downloaded', generation, sep=' ')
+
+
+def downloadFile(fileName, url):
+    with urllib.request.urlopen(url) as response, open(fileName, 'wb+') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+
+def extract(fileName):
+    directory = fileName + '/'
+    if os.path.exists(directory):
+        print(directory, ' exists', sep=' ')
+        return
+    os.makedirs(directory)
+    with zipfile.ZipFile(fileName + '.zip', 'r') as zip_ref:
+        zip_ref.extractall(directory)
 
 
 def convert_time(df, timefields):
@@ -61,8 +117,8 @@ def extract_month_and_year(df, timefields):
 
 
 def convert_goal(df):
-    df['goal'] = df.apply(lambda row: round(row['goal'] * row['fx_rate']), axis=1)
-    df.drop(columns='fx_rate', inplace=True)
+    df['goal'] = df.apply(lambda row: round(row['goal'] * row['static_usd_rate']), axis=1)
+    df.drop(columns='static_usd_rate', inplace=True)
     ind = df[df['goal'] == 0].index
     df.drop(ind, inplace=True)
 
@@ -182,5 +238,4 @@ def set_text_statistics(df):
 
 
 if __name__ == '__main__':
-    df = make_dataframe()
-    extract_catagories(df)
+    make_dataframe(path=r'rawData', cache='rick.pickle')
