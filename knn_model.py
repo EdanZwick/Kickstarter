@@ -6,11 +6,11 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 
-input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_months', 'goal']
+input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
 lower_bound = 1
 upper_bound = 40
 
-def run_model(df):
+def run_model(df, k = None):
     X = df[input_fields]
     y = df['state']
 
@@ -24,33 +24,35 @@ def run_model(df):
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.3, random_state=1)
 
     error = []
-    # Calculating error for K values between 1 and 40
-    for i in range(lower_bound, upper_bound+1):
-        print('knn: ' + str(i))
-        knn = KNeighborsClassifier(n_neighbors=i)
-        knn.fit(X_train, y_train)
-        pred_i = knn.predict(X_val)
-        error.append(np.mean(pred_i != y_val))
+
+    if k is None:
+        # Calculating error for K values between 1 and 40
+        for i in range(lower_bound, upper_bound+1):
+            print('knn: ' + str(i))
+            knn = KNeighborsClassifier(n_neighbors=i)
+            knn.fit(X_train, y_train)
+            pred_i = knn.predict(X_val)
+            error.append(np.mean(pred_i != y_val))
 
 
-    plt.figure(figsize=(12, 6))
-    plt.plot(range(lower_bound, upper_bound+1), error, color='red', linestyle='dashed', marker='o',
-             markerfacecolor='blue', markersize=10)
+        plt.figure(figsize=(12, 6))
+        plt.plot(range(lower_bound, upper_bound+1), error, color='red', linestyle='dashed', marker='o',
+                 markerfacecolor='blue', markersize=10)
 
-    plt.title('Error Rate K Value')
-    plt.xlabel('K Value')
-    plt.ylabel('Mean Error Cross Validation')
+        plt.title('Error Rate K Value')
+        plt.xlabel('K Value')
+        plt.ylabel('Mean Error Cross Validation')
 
-    idx = error.index(min(error))
+        idx = error.index(min(error))
+        k = idx + lower_bound
+        print('chosen nearest neighbours: ' + str(k))
+        plt.show()
 
-    print('chosen nearest neighbours: ' + str(idx + 1))
-
-    knn = KNeighborsClassifier(n_neighbors=(idx+1))
+    knn = KNeighborsClassifier(n_neighbors=k)
     knn.fit(X_train, y_train)
     pred = knn.predict(X_test)
     print('precision is: ' + str(1-np.mean(pred != y_test)))
-    plt.show()
-
+    return 1-np.mean(pred != y_test)
 
 
 

@@ -174,9 +174,26 @@ def encode_string_enums(df, col, str_values, number_values):
     df = df[col] = df[col].map(mapping)
 
 
-def add_destination_delta_in_months(df):
+def add_destination_delta_in_days(df):
     delta = lambda r: (r['deadline'] - r['launched_at']).components.days
-    df['destination_delta_in_months'] = df.apply(lambda row: delta(row), axis=1)
+    df['destination_delta_in_days'] = df.apply(lambda row: delta(row), axis=1)
+
+
+def get_image_url(df):
+    imgs = df['photo']
+    imgs = imgs.apply(json.loads)
+    imgs = imgs.map(lambda x: x.get('full', 0))
+    df['photo'] = imgs
+
+
+def download_photos(df, folder = 'tmp'):
+    folder = os.path.join(os.getcwd(), folder)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+        print('created folder')
+    for url, id in zip(df['photo'], df['id']):
+        with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(id) + '.jpg'), 'wb+') as out_file:
+            shutil.copyfileobj(response, out_file)
 
 
 def make_word_embeddings(df):
@@ -221,6 +238,7 @@ def set_semantics(df):
 def avg_word(sentence):
   words = sentence.split()
   return float(sum(len(word) for word in words))/len(words)
+
 
 def set_text_statistics(df):
     nltk.download('stopwords')
