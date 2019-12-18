@@ -81,15 +81,11 @@ def plot_distriubtion_by_state_slice(df, explode=[0, 0, .1, .2, .4]):
     plt.show()
 
 
-def plot_success_by_destination_delta_in_months(df):
-    suc = df.loc[df['state'] == 'successful']
-    f = df.loc[df['state'] == 'failed']
-    sc = suc['destination_delta_in_months'].value_counts()
-    sf = f['destination_delta_in_months'].value_counts()
-    d = pd.DataFrame({'Successful': sc, 'failed': sf})
-    d.plot.bar()
+def plot_success_by_destination_delta_in_days(df):
+    data = df.loc[(df['destination_delta_in_days']>14) & (df['destination_delta_in_days'] < 45)]
+    plot_success_failure(data, 'destination_delta_in_days')
+    plt.title('Success by destination_delta_in_day')
     plt.show()
-
 
 def plot_distribuition_by_state_squarify(df):
     state = df['state'].value_counts()
@@ -117,20 +113,24 @@ def plot_precision(results):
 
 
 def plot_success_over_time(df):
-    data = df[['deadline_month', 'deadline_year', 'state']]
-    years = data['deadline_year'].unique()
-    months = data['deadline_month']
+    data = df[['launched_at_month', 'launched_at_year', 'state']]
+    years = sorted(data['launched_at_year'].unique())
+    months = sorted(data['launched_at_month'].unique())
     statistics = {}
     for year in years:
         for month in months:
-            tmp = data.loc[(data['deadline_month']==month) & (data['deadline_year']==year)]
-            suc = len(tmp.loc[tmp['state']=='successful'])
-            statistics[(str(month) + '/' + str(year))] = suc / len(tmp)
-    print(statistics)
-
-    # group coloms by year + month
-    # calculate percentage
-    # plot as distribution.
+            tmp = data.loc[(data['launched_at_month']==month) & (data['launched_at_year']==year)]
+            suc = len(tmp.loc[tmp['state'] == 'successful'])
+            total = len(tmp)
+            if (total != 0):
+                statistics[(str(month) + '/' + str(year))] = suc / len(tmp)
+    bars = [name for name in statistics]
+    hights = [statistics[name] for name in statistics]
+    chart = sns.barplot(x=bars, y=hights)
+    labels = [name if i%6==0 else '' for i, name in enumerate(bars)]
+    chart.set_xticklabels(labels = labels, rotation=45)
+    plt.title('Success rate by month')
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -141,4 +141,5 @@ if __name__ == '__main__':
     # plot_success_by_sub_category(df)
     # print(plt.style.available)
     # plot_success_by_sub_category_name(df)
-    plot_success_over_time(df)
+    #plot_success_over_time(df)
+    plot_success_by_destination_delta_in_days(df)

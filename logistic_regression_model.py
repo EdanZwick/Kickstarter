@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 
-input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_months', 'goal']
+input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
 
 def run_model(df):
     X = df[input_fields]

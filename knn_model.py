@@ -6,7 +6,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 
-input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_months', 'goal']
+input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
 lower_bound = 1
 upper_bound = 40
 

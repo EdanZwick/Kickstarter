@@ -65,7 +65,7 @@ dc.convert_goal(df)
 # extra manipulations
 
 dc.extract_month_and_year(df, timefields)
-dc.add_destination_delta_in_months(df)
+dc.add_destination_delta_in_days(df)
 
 
 # with pd.option_context('display.max_rows', None, 'display.max_columns', None):  # more options can be specified also
@@ -82,7 +82,7 @@ dc.add_destination_delta_in_months(df)
 # visio.plot_distribution_by_state(df)
 # visio.plot_distribuition_by_state_squarify(df)
 # visio.plot_distriubtion_by_state_slice(df)
-# visio.plot_success_by_destination_delta_in_months(df)
+# visio.plot_success_by_destination_delta_in_days(df)
 
 #filter to only deal with successful and failed projects and set state to {0,1} values
 

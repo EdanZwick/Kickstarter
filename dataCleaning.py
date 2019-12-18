@@ -10,6 +10,7 @@ import numpy as np
 from gensim.models import Word2Vec, FastText
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
+
 datasets = {
     'December 2019': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2019-11-14T03_20_27_004Z.zip',
     'December 2018': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2018-12-13T03_20_05_701Z.zip',
@@ -168,9 +169,26 @@ def encode_string_enums(df, col, str_values, number_values):
     df = df[col] = df[col].map(mapping)
 
 
-def add_destination_delta_in_months(df):
+def add_destination_delta_in_days(df):
     delta = lambda r: (r['deadline'] - r['launched_at']).components.days
-    df['destination_delta_in_months'] = df.apply(lambda row: delta(row), axis=1)
+    df['destination_delta_in_days'] = df.apply(lambda row: delta(row), axis=1)
+
+
+def get_image_url(df):
+    imgs = df['photo']
+    imgs = imgs.apply(json.loads)
+    imgs = imgs.map(lambda x: x.get('full', 0))
+    df['photo'] = imgs
+
+
+def download_photos(df, folder = 'tmp'):
+    folder = os.path.join(os.getcwd(), folder)
+    if not os.path.exists(folder):
+        os.makedirs(folder)
+        print('created folder')
+    for url, id in zip(df['photo'], df['id']):
+        with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(id) + '.jpg'), 'wb+') as out_file:
+            shutil.copyfileobj(response, out_file)
 
 
 def make_word_embeddings(df):
@@ -187,11 +205,12 @@ def make_word_embeddings(df):
 
         df_clean = pd.DataFrame({'clean': df2})
         sent = [row.split(',') for row in df_clean['clean']]
-        model = FastText(sentences=sent, min_count=1,size= 20, window =3, iter=10)
+        model = FastText(sentences=sent, min_count=1, size=20, window=3, iter=10)
         model.save("fastText.model")
 
     print('started setting name_nlp column')
-    df['name_nlp'] = df.apply(lambda row: sum([model.wv[re.sub("[^A-Za-z']", ' ', s.lower().strip())] for s in (row["name"] + ' ' + str(row['blurb'])).split(' ')]), axis=1)
+    df['name_nlp'] = df.apply(lambda row: sum([model.wv[re.sub("[^A-Za-z']", ' ', s.lower().strip())] for s in
+                                               (row["name"] + ' ' + str(row['blurb'])).split(' ')]), axis=1)
     print('finished setting name_nlp column')
 
 
@@ -213,23 +232,21 @@ def set_semantics(df):
 
 
 def avg_word(sentence):
-  words = sentence.split()
-  return float(sum(len(word) for word in words))/len(words)
+    words = sentence.split()
+    return float(sum(len(word) for word in words)) / len(words)
+
 
 def set_text_statistics(df):
     stop = stopwords.words('english')
-    df["name_num_words"]  = df["name"].apply(lambda x: len(x.split()))
-    df["name_num_chars"]  = df["name"].apply(lambda x: len(x.replace(" ","")))
+    df["name_num_words"] = df["name"].apply(lambda x: len(x.split()))
+    df["name_num_chars"] = df["name"].apply(lambda x: len(x.replace(" ", "")))
     df['name_avg_word_length'] = df['name'].apply(lambda x: avg_word(x))
     df["blurb_num_words"] = df["blurb"].str.apply(lambda x: len(x.split()))
-    df["blurb_num_chars"] = df["blurb"].str.apply(lambda x: len(x.replace(" ","")))
+    df["blurb_num_chars"] = df["blurb"].str.apply(lambda x: len(x.replace(" ", "")))
     df['blurb_avg_word_length'] = df['blurb'].str.apply(lambda x: avg_word(x))
     df['blurb_stopwords'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x in stop]))
     df['name_upper'] = df['name'].apply(lambda x: len([x for x in x.split() if x.isupper()]))
     df['blurb_upper'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x.isupper()]))
-
-
-
 
 
 if __name__ == '__main__':

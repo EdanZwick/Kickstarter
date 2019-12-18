@@ -11,7 +11,7 @@ import dataCleaning as dc
 DF_CACHE = "clean_df.pickle"
 
 LABEL = 'state'
-INPUT_FIELDS = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_months']
+INPUT_FIELDS = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days']
 
 
 class Data:
@@ -46,7 +46,7 @@ def _get_cleaned_df() -> pd.DataFrame:
     dc.remove_duplicates(df)
     dc.convert_goal(df)
     dc.extract_month_and_year(df, timefields)
-    dc.add_destination_delta_in_months(df)
+    dc.add_destination_delta_in_days(df)
     # preparing to train
     df = df.loc[df['state'].isin(['failed', 'successful'])]
     dc.encode_string_enums(df, 'state', ['failed', 'successful'], [0, 1])
