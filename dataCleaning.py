@@ -7,16 +7,10 @@ import urllib.request
 import shutil
 import zipfile
 import numpy as np
+from dataset_generations import datasets
 from gensim.models import Word2Vec, FastText
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
-
-datasets = {
-    'December 2019': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2019-11-14T03_20_27_004Z.zip',
-    'December 2018': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2018-12-13T03_20_05_701Z.zip',
-    'December 2017': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2017-12-15T10_20_51_610Z.zip',
-    'December 2016': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2016-12-15T22_20_52_411Z.zip',
-    'December 2015': r'https://s3.amazonaws.com/weruns/forfun/Kickstarter/Kickstarter_2015-12-17T12_09_06_107Z.zip'}
 
 
 # Our data is originally split amongst many small csv files.
@@ -34,6 +28,7 @@ def make_dataframe(path=r'rawData', out=None,
     :param path: Path to location of csv files.
     :return: panda dataframe made of the unified files.
     """
+    # first try to save time by locating a cache, either pickle or CSV
     if cache is not None and os.path.isfile(cache):
         df = pd.read_pickle(cache)
         print('read dataframe from cache', cache, sep=' ')
@@ -41,15 +36,33 @@ def make_dataframe(path=r'rawData', out=None,
     if out is not None and os.path.isfile(out):
         print('read dataframe from csv file', os.path.join(os.getcwd(), out), sep=' ')
         return pd.read_csv(os.path.join(os.getcwd(), out))
-    organizeData()
-    df = makeSingleDf(path + '/' + 'December 2019')
+    # log datasets that did not load well, without ending the whole process.
+    with open('bad_data_sets.txt', 'w+') as f:
+        f.write('bad data sets: \n')
+    df = pd.DataFrame()  # Initial dataframe that will be grown
+    print('Downloading datasets, expect this to take a few minutes')
     for key in datasets:
-        print(key)
-        df = pd.concat([df, makeSingleDf(path + '/' + key)], ignore_index=True, sort=True)
-        remove_duplicates(df)
+        try:
+            print('Downloading {}'.format(key))
+            download_extract(key)  # Downloads this data set as zip and extracts it.
+            print('Merging {}'.format(key))
+            new = makeSingleDf(path + '/' + key)  # Merges the 50+- CSVs in this generation to a single df
+            # We used to do this later, but it seems that there are too much lives in this new dataset We now will
+            # drop them so if there is any finalized version, it will win de-duping (was already not supposed to happen)
+            drop_lives(new)
+            df = pd.concat([df, new], ignore_index=True, sort=True)
+            remove_duplicates(df)
+            erase(key)
+        except Exception as e:
+            with open('bad_data_sets.txt', 'a+') as f:
+                f.write(key + '\n')
+            erase(key)
+            print(e)
+            continue
+    print('there are ', len(df.index), ' records in data set', sep='')
+    # save united dataset to csv or pickle.
     if out is not None:
         df.to_csv(path_or_buf=out, chunksize=10000)
-    print('there are ', len(df.index), ' records in data set', sep='')
     if cache is not None:
         df.to_pickle(path=cache)
         print('Saved data frame to', cache)
@@ -67,28 +80,41 @@ def makeSingleDf(path):
     return df
 
 
-def organizeData():
-    downloadData()
-    for key in datasets:
-        extract(r'rawData/' + key)
-
-
-def downloadData():
-    fileName = r'rawData/'
-    directory = os.path.dirname(fileName)
-    if os.path.exists(directory):
-        print('files already downloaded')
-        return
-    os.makedirs(directory)
-    print('Downloading datasets, expect this to take a few minutes')
+def downloadData(path=r'rawData/'):
+    directory = os.path.dirname(path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
     for generation in datasets:
-        downloadFile(fileName + generation + '.zip', datasets[generation])
+        downloadFile(path + generation + '.zip', datasets[generation])
         print('Downloaded', generation, sep=' ')
 
 
-def downloadFile(fileName, url):
+def downloadFile(fileName, url, path=r'rawData/'):
+    directory = os.path.dirname(path)
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+    # fileName = path + fileName
+    if os.path.isfile(fileName) or os.path.exists(fileName[:-4]):
+        print('file {} already downloaded'.format(fileName))
+        return
     with urllib.request.urlopen(url) as response, open(fileName, 'wb+') as out_file:
         shutil.copyfileobj(response, out_file)
+    print('downloaded {}'.format(fileName))
+
+
+def download_extract(generation, path=r'rawData/'):
+    downloadFile(path + generation + '.zip', datasets[generation])
+    print('extracting')
+    extract(path + generation)
+
+
+def erase(generation, path=r'rawData/'):
+    fileName = path + generation + '.zip'
+    if os.path.isfile(fileName):
+        os.remove(fileName)
+    if os.path.exists(path + generation + '/'):
+        shutil.rmtree(path + generation + '/')
+        print('erased {}'.format(generation))
 
 
 def extract(fileName):
@@ -157,9 +183,12 @@ def remove_duplicates(df):
     df.drop_duplicates(subset='id', inplace=True)
 
 
-def fix_state(df):
+def drop_lives(df):
     ind = df[df['state'] == 'live'].index
     df.drop(ind, inplace=True)
+
+def fix_state(df):
+    drop_lives(df)
     stat = df['state'].map(lambda x: x if x == 'successful' else 'failed')
     df['state'] = stat
 
@@ -181,7 +210,7 @@ def get_image_url(df):
     df['photo'] = imgs
 
 
-def download_photos(df, folder = 'tmp'):
+def download_photos(df, folder='tmp'):
     folder = os.path.join(os.getcwd(), folder)
     if not os.path.exists(folder):
         os.makedirs(folder)
@@ -249,5 +278,17 @@ def set_text_statistics(df):
     df['blurb_upper'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x.isupper()]))
 
 
+def files_check():
+    print('downloading')
+    download_extract('November 2019')
+    print('eraseing')
+    erase('November 2019')
+
+
 if __name__ == '__main__':
-    make_dataframe(path=r'rawData', cache='rick.pickle')
+    # make_dataframe(path=r'rawData', cache='rick.pickle')
+    df = pd.read_pickle('cleaned.pickle')
+    #get_image_url(df)
+    download_photos(df)
+    # folder1 = 'tmp'
+    # print(os.path.join(os.getcwd(), folder1))
