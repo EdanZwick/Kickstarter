@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from datetime import datetime
 import json
 import re
@@ -7,10 +6,11 @@ import urllib.request
 import shutil
 import zipfile
 import numpy as np
+import pandas as pd
 from dataset_generations import datasets
 from gensim.models import Word2Vec, FastText
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
-from nltk.corpus import stopwords
+import nltk
 
 
 # Our data is originally split amongst many small csv files.
@@ -234,12 +234,11 @@ def make_word_embeddings(df):
 
         df_clean = pd.DataFrame({'clean': df2})
         sent = [row.split(',') for row in df_clean['clean']]
-        model = FastText(sentences=sent, min_count=1, size=20, window=3, iter=10)
+        model = FastText(sentences=sent, min_count=1,size= 20, window =3, iter=10)
         model.save("fastText.model")
 
     print('started setting name_nlp column')
-    df['name_nlp'] = df.apply(lambda row: sum([model.wv[re.sub("[^A-Za-z']", ' ', s.lower().strip())] for s in
-                                               (row["name"] + ' ' + str(row['blurb'])).split(' ')]), axis=1)
+    df['name_nlp'] = df.apply(lambda row: sum([model.wv[re.sub("[^A-Za-z']", ' ', s.lower().strip())] for s in (row["name"] + ' ' + str(row['blurb'])).split(' ')]), axis=1)
     print('finished setting name_nlp column')
 
 
@@ -261,21 +260,27 @@ def set_semantics(df):
 
 
 def avg_word(sentence):
-    words = sentence.split()
-    return float(sum(len(word) for word in words)) / len(words)
+  words = sentence.split()
+  return float(sum(len(word) for word in words))/len(words)
 
 
 def set_text_statistics(df):
-    stop = stopwords.words('english')
-    df["name_num_words"] = df["name"].apply(lambda x: len(x.split()))
-    df["name_num_chars"] = df["name"].apply(lambda x: len(x.replace(" ", "")))
+    nltk.download('stopwords')
+    df_str = df["blurb"].astype(str)
+
+    stopwords = set(nltk.corpus.stopwords.words('english'))
+    df["name_num_words"]  = df["name"].apply(lambda x: len(x.split()))
+    df["name_num_chars"]  = df["name"].apply(lambda x: len(x.replace(" ","")))
     df['name_avg_word_length'] = df['name'].apply(lambda x: avg_word(x))
-    df["blurb_num_words"] = df["blurb"].str.apply(lambda x: len(x.split()))
-    df["blurb_num_chars"] = df["blurb"].str.apply(lambda x: len(x.replace(" ", "")))
-    df['blurb_avg_word_length'] = df['blurb'].str.apply(lambda x: avg_word(x))
-    df['blurb_stopwords'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x in stop]))
+    df["blurb_num_words"] = df_str.apply(lambda x: len(x.split()))
+    df["blurb_num_chars"]  = df_str.apply(lambda x: len(x.replace(" ","")))
+    df['blurb_avg_word_length'] = df_str.apply(lambda x: avg_word(x))
+    df['blurb_stopwords'] = df_str.apply(lambda x: len([x for x in x.split() if x in stopwords]))
     df['name_upper'] = df['name'].apply(lambda x: len([x for x in x.split() if x.isupper()]))
-    df['blurb_upper'] = df['blurb'].str.apply(lambda x: len([x for x in x.split() if x.isupper()]))
+    df['blurb_upper'] = df_str.apply(lambda x: len([x for x in x.split() if x.isupper()]))
+
+
+
 
 
 def files_check():
@@ -286,9 +291,4 @@ def files_check():
 
 
 if __name__ == '__main__':
-    # make_dataframe(path=r'rawData', cache='rick.pickle')
-    df = pd.read_pickle('cleaned.pickle')
-    #get_image_url(df)
-    download_photos(df)
-    # folder1 = 'tmp'
-    # print(os.path.join(os.getcwd(), folder1))
+    make_dataframe(path=r'rawData', cache='rick.pickle')
