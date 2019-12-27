@@ -51,6 +51,7 @@ def avg_word(sentence):
 def set_text_statistics(df):
     nltk.download('stopwords')
     df_str = df["blurb"].astype(str)
+
     stopwords = set(nltk.corpus.stopwords.words('english'))
     df["name_num_words"] = df["name"].apply(lambda x: len(x.split()))
     df["name_num_chars"] = df["name"].apply(lambda x: len(x.replace(" ", "")))
