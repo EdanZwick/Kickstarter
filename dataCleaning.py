@@ -212,8 +212,15 @@ def download_photos(df, folder='tmp'):
         os.makedirs(folder)
         print('created folder')
     for url, id in zip(df['photo'], df['id']):
-        with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(id) + '.jpg'), 'wb+') as out_file:
+        with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(id)), 'wb+') as out_file:
             shutil.copyfileobj(response, out_file)
+    print('Downloaded {} images'.format(str(len(df))))
+    
+def erase_photos(folder):
+    if folder is None:
+        raise ValueError('No path to delete')
+    shutil.rmtree(folder)
+    
 
 
 def files_check():
