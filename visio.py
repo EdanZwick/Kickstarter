@@ -117,16 +117,16 @@ def plot_success_over_time(df):
     data = df[['launched_at_month', 'launched_at_year', 'state']]
     years = sorted(data['launched_at_year'].unique())
     months = sorted(data['launched_at_month'].unique())
-    statistics = {}
+    statistics = []
     for year in years:
         for month in months:
             tmp = data.loc[(data['launched_at_month']==month) & (data['launched_at_year']==year)]
             suc = len(tmp.loc[tmp['state'] == 'successful'])
             total = len(tmp)
             if (total != 0):
-                statistics[(str(month) + '/' + str(year))] = suc / len(tmp)
-    bars = [name for name in statistics]
-    hights = [statistics[name] for name in statistics]
+                statistics.append(((suc / len(tmp)),(str(month) + '/' + str(year))))
+    bars = [name[1] for name in statistics]
+    hights = [data[0] for data in statistics]
     chart = sns.barplot(x=bars, y=hights)
     labels = [name if i%6==0 else '' for i, name in enumerate(bars)]
     chart.set_xticklabels(labels = labels, rotation=45)
