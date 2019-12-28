@@ -28,6 +28,7 @@ def make_dataframe(path=r'rawData', out=None,
     if cache is not None and os.path.isfile(cache):
         df = pd.read_pickle(cache)
         print('read dataframe from cache', cache, sep=' ')
+        df.dropna(subset=['id'], inplace=True)
         return df
     if out is not None and os.path.isfile(out):
         print('read dataframe from csv file', os.path.join(os.getcwd(), out), sep=' ')
@@ -54,6 +55,8 @@ def make_dataframe(path=r'rawData', out=None,
             erase(key)
             print(e)
             continue
+    # if any record has null id, erase it:
+    df.dropna(subset=['id'], inplace=True)
     print('there are ', len(df.index), ' records in data set', sep='')
     # save united dataset to csv or pickle.
     if out is not None:
