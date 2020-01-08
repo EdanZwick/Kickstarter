@@ -6,9 +6,13 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 
-input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
-
-def run_model(df):
+def run_model(df, nima = False):
+    cols = list(df.columns.values)
+    input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal', 'nima_score', 'nima_tech']
+    input_fields = [name for name in input_fields if name in cols]
+    if nima == False:
+        input_fields.remove('nima_score')
+        input_fields.remove('nima_tech')
     X = df[input_fields]
     y = df['state']
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20)

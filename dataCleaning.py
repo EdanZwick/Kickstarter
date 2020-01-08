@@ -3,9 +3,11 @@ from datetime import datetime
 import json
 import re
 import urllib.request
+from urllib.error import HTTPError
 import shutil
 import zipfile
 import pandas as pd
+import numpy as np
 from dataset_generations import datasets
 
 
@@ -211,9 +213,16 @@ def download_photos(df, folder='tmp'):
     if not os.path.exists(folder):
         os.makedirs(folder)
         print('created folder')
-    for url, id in zip(df['photo'], df['id']):
-        with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(id)), 'wb+') as out_file:
-            shutil.copyfileobj(response, out_file)
+    for url, idnum in zip(df['photo'], df['id']):
+        try:
+            with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(idnum)), 'wb+') as out_file:
+                shutil.copyfileobj(response, out_file)
+        except HTTPError as err: 
+            with open('bad_images.txt', 'a+') as f:
+                    f.write(str(idnum) + '\n')
+                    continue
+                    
+                
     print('Downloaded {} images'.format(str(len(df))))
     
 def erase_photos(folder):
@@ -223,11 +232,19 @@ def erase_photos(folder):
     
 
 
-def files_check():
-    print('downloading')
-    download_extract('November 2019')
-    print('eraseing')
-    erase('November 2019')
+def add_nima(df, jsonFile, columnName):
+    print('opening json')
+    with open(jsonFile) as jf:
+        scores = json.load(jf)
+        print('there are {} recordes in json'.format(len(scores)))
+        for i, record in enumerate(scores):
+            iid = int(record.get('image_id'))
+            score = record.get('mean_score_prediction')
+            df.loc[df['id']==iid, columnName] = score
+            if i % 10000 == 0:
+                print ('done with record {}'.format(i))
+
+
 
 
 if __name__ == '__main__':

@@ -6,12 +6,17 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.neighbors import KNeighborsClassifier
 
-input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
+input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal','nima_score', 'nima_tech']
 lower_bound = 1
 upper_bound = 40
 
-def run_model(df, k = None):
-    X = df[input_fields]
+def run_model(df, k = None, nima = False):
+    cols = list(df.columns.values)
+    fields = [field for field in input_fields if field in cols]
+    if nima == False:
+        fields.remove('nima_score')
+        fields.remove('nima_tech')
+    X = df[fields]
     y = df['state']
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.20)
