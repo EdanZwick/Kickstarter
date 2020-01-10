@@ -11,11 +11,13 @@ lower_bound = 100
 upper_bound = 1000
 step = 50
 
-def run_model(df, num_trees = None, nima = False):
+def run_model(df, num_trees = None, nima = False, input_fields = None):
+    if input_fields == None:
+        input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
+    if nima:
+        input_fields += ['nima_score', 'nima_tech']
     cols = list(df.columns.values)
     fields = [field for field in input_fields if field in cols]
-    if nima == False:
-        fields.remove('nima_score')
     X = df[fields]
     y = df['state']
 

@@ -8,14 +8,15 @@ from sklearn.neighbors import KNeighborsClassifier
 
 input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal','nima_score', 'nima_tech']
 lower_bound = 1
-upper_bound = 40
+upper_bound = 50
 
-def run_model(df, k = None, nima = False):
+def run_model(df, k = None, input_fields = None, nima = False):
+    if input_fields == None:
+        input_fields = ['launched_at_month', 'launched_at_year', 'category', 'parent_category', 'destination_delta_in_days', 'goal']
+    if nima:
+        input_fields += ['nima_score', 'nima_tech']
     cols = list(df.columns.values)
     fields = [field for field in input_fields if field in cols]
-    if nima == False:
-        fields.remove('nima_score')
-        fields.remove('nima_tech')
     X = df[fields]
     y = df['state']
 
@@ -31,7 +32,7 @@ def run_model(df, k = None, nima = False):
     error = []
 
     if k is None:
-        # Calculating error for K values between 1 and 40
+        # Calculating error for K values between 1 and 50
         for i in range(lower_bound, upper_bound+1):
             print('knn: ' + str(i))
             knn = KNeighborsClassifier(n_neighbors=i)

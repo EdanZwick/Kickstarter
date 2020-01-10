@@ -8,8 +8,12 @@ import shutil
 import zipfile
 import pandas as pd
 import numpy as np
+import scipy.stats
 from dataset_generations import datasets
 
+caches_urls = {
+'rick.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1/rick.pickle',
+'with_NIMA.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1.1/with_NIMA.pickle'}
 
 # Our data is originally split amongst many small csv files.
 # This method creates a single data frame from all of them.
@@ -27,10 +31,8 @@ def make_dataframe(path=r'rawData', out=None,
     :return: panda dataframe made of the unified files.
     """
     # first try to save time by locating a cache, either pickle or CSV
-    if cache is not None and os.path.isfile(cache):
-        df = pd.read_pickle(cache)
-        print('read dataframe from cache', cache, sep=' ')
-        df.dropna(subset=['id'], inplace=True)
+    if cache is not None:
+        df = get_pickles(cache)
         return df
     if out is not None and os.path.isfile(out):
         print('read dataframe from csv file', os.path.join(os.getcwd(), out), sep=' ')
@@ -66,6 +68,22 @@ def make_dataframe(path=r'rawData', out=None,
     if cache is not None:
         df.to_pickle(path=cache)
         print('Saved data frame to', cache)
+    return df
+
+
+def get_pickles(cache):
+    cache_folder = 'pickled_data'
+    cache = os.path.join(cache_folder,cache)
+    if not os.path.isdir(cache_folder):
+            os.makedirs(cache_folder)
+    if not os.path.isfile(cache):
+        try:
+            download_cache(cache)
+        except:
+            print('No such pickle file exists on your computer or web')
+            return None
+    df = pd.read_pickle(cache)
+    print('read dataframe from cache', cache, sep=' ')
     return df
 
 
@@ -228,6 +246,17 @@ def download_photos(df, folder='tmp'):
                 
     print('Downloaded {} images'.format(str(len(df))))
     
+    
+def download_cache(cache):
+    name = os.path.split(cache)[-1]
+    url = caches_urls.get(name,None)
+    if url is None:
+        raise Exception('No url for file')
+    with urllib.request.urlopen(url) as response, open(cache, 'wb+') as out_file:
+                shutil.copyfileobj(response, out_file)
+    print('downloaded pickle from rescorces')
+    
+    
 def erase_photos(folder):
     if folder is None:
         raise ValueError('No path to delete')
@@ -236,18 +265,43 @@ def erase_photos(folder):
 
 
 def add_nima(df, jsonFile, columnName):
+    if columnName in df.columns:
+        print('Data already in dataset!')
+        return
     print('opening json')
     with open(jsonFile) as jf:
         scores = json.load(jf)
         print('there are {} recordes in json'.format(len(scores)))
         for i, record in enumerate(scores):
-            iid = int(record.get('image_id'))
-            score = record.get('mean_score_prediction')
-            df.loc[df['id']==iid, columnName] = score
-            if i % 10000 == 0:
-                print ('done with record {}'.format(i))
+            try:
+                iid = int(record.get('image_id'))
+                score = record.get('mean_score_prediction')
+                df.loc[df['id']==iid, columnName] = score
+                if i % 10000 == 0:
+                    print ('done with record {}'.format(i))
+            except KeyError:
+                # if this project was dropped from the dataframe for some reason as the dataset changes.
+                continue
 
+                
+                
+# Add the pdf value for each score, for each distribution
+def add_NIMA_probs(df, succesful_mean, succesful_std, failed_mean, failed_std):
+    success_dist = scipy.stats.norm(succesful_mean, succesful_std)
+    failed_dist = scipy.stats.norm(failed_mean, failed_std)
+    sucess_prob = lambda r: success_dist.pdf(r['nima_score'])
+    failed_prob = lambda r: failed_dist.pdf(r['nima_score'])
+    df['NIMA_prob_success'] = df.apply(lambda row: sucess_prob(row), axis=1)
+    df['NIMA_prob_failed'] = df.apply(lambda row: failed_prob(row), axis=1)
+    
 
+def add_NIMA_probs_margin(df):
+    margin = lambda r: r['NIMA_prob_success'] - r['NIMA_prob_failed']
+    df['NIMA_margin'] = df.apply(lambda row: margin(row), axis=1)
+    
+
+def unified_NIMA(df):
+    df['NIMA_joined'] = df.apply(lambda row: row['nima_score'] + row['nima_tech'], axis=1)
 
 
 if __name__ == '__main__':

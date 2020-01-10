@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import dataCleaning as dc
 import seaborn as sns
 import pandas as pd
+import urllib.request
 import plotly.graph_objs as go
 from plotly.offline import init_notebook_mode, iplot, plot
 import squarify
@@ -106,10 +107,11 @@ def plot_distribuition_by_state_squarify(df):
 
 
 def plot_precision(results):
-    names = [name for name in results]
-    precision = [results[name] for name in results]
+    names = sorted([name for name in results])
+    precision = [results[name] for name in names]
     sns.barplot(x=names, y=precision)
     plt.title('Precision by model')
+    plt.xticks(rotation=90)
     plt.show()
 
 
@@ -134,6 +136,40 @@ def plot_success_over_time(df):
     plt.show()
 
 
+# Samples 
+def display_imgs(df):
+    # sort dataset for easy access to edges.
+    ranks = df.sort_values(by='nima_score', ascending=False, inplace=False)
+    # pick 9 random numbers
+    picks = np.random.randint(0,200,9)
+    f, axarr = plt.subplots(3,3,figsize=[20, 10])
+    # get images from url, and desplay their rating and status
+    for i, pic in enumerate(picks):
+        img = urllib.request.urlopen(ranks.iloc[pic].photo)
+        a = plt.imread(img,0)
+        axarr[i//3,i%3].imshow(a)
+        axarr[i//3,i%3].set_title('NIMA score: {:.2f}    state: {}'.format(ranks.iloc[pic].nima_score, ranks.iloc[pic].state))
+    # remove plt junk
+    for ax in f.axes:
+        ax.axis("off")
+    plt.rcParams["axes.grid"] = False
+    f.suptitle('Random images with high NIMA score',fontsize=40)
+    plt.show()
+    # again for the failed, using negative index retrieves from the end.
+    picks = np.random.randint(0,200,9) * -1
+    f, axarr = plt.subplots(3,3,figsize=[20, 10])
+    for i, pic in enumerate(picks):        
+        img = urllib.request.urlopen(ranks.iloc[pic].photo)
+        a = plt.imread(img,0)
+        axarr[i//3,i%3].imshow(a)
+        axarr[i//3,i%3].set_title('NIMA score: {:.2f}    state: {}'.format(ranks.iloc[pic].nima_score, ranks.iloc[pic].state))
+    for ax in f.axes:
+        ax.axis("off")
+    plt.rcParams["axes.grid"] = False
+    f.suptitle('Random images with low NIMA score',fontsize=40)
+    plt.show()
+    
+    
 if __name__ == '__main__':
     df = pd.read_pickle('tmp.pickle')
     # plot_success_by_country(df)
