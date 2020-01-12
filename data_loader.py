@@ -34,7 +34,7 @@ def _get_cleaned_df() -> pd.DataFrame:
 
     df = dc.make_dataframe()
     redundant = ['country_displayable_name', 'currency_symbol', 'currency_trailing_code', 'current_currency',
-                 'source_url', 'disable_communication', 'profile', 'urls', 'photo', 'static_usd_rate', 'usd_pledged',
+                 'source_url', 'disable_communication', 'profile', 'urls', 'photo', 'usd_pledged',
                  'usd_type']
     df.drop(columns=redundant, inplace=True)
     empty = ['friends', 'is_backing', 'is_starred', 'permissions']
@@ -50,6 +50,8 @@ def _get_cleaned_df() -> pd.DataFrame:
     # preparing to train
     df = df.loc[df['state'].isin(['failed', 'successful'])]
     dc.encode_string_enums(df, 'state', ['failed', 'successful'], [0, 1])
+    dc.set_text_statistics(df)
+    dc.set_semantics(df)
 
     with open(DF_CACHE, "wb") as f:
         pickle.dump(df, f)
