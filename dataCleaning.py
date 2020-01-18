@@ -12,8 +12,8 @@ import scipy.stats
 from dataset_generations import datasets
 
 caches_urls = {
-'rick.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1/rick.pickle',
-'with_NIMA.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1.1/with_NIMA.pickle'}
+'rick.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1/rick.pickle.zip',
+'with_NIMA.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1.1/with_NIMA.pickle.zip'}
 
 # Our data is originally split amongst many small csv files.
 # This method creates a single data frame from all of them.
@@ -79,7 +79,8 @@ def get_pickles(cache):
     if not os.path.isfile(cache):
         try:
             download_cache(cache)
-        except:
+        except Exception as e:
+            print(e)
             print('No such pickle file exists on your computer or web')
             return None
     df = pd.read_pickle(cache)
@@ -125,7 +126,29 @@ def download_extract(generation, path=r'rawData/'):
     print('extracting')
     extract(path + generation)
 
-
+    
+def download_cache(cache):
+    name = os.path.split(cache)[-1]
+    url = caches_urls.get(name,None)
+    if url is None:
+        raise Exception('No url for file')
+    if url.endswith('.zip'):
+        # save temp as zip file before extracting
+        name += '.zip'
+        folder = os.path.split(cache)[0] + '/'
+        cache = os.path.join(folder, name)
+    # download actual file (zip or pickle)
+    with urllib.request.urlopen(url) as response, open(cache, 'wb+') as out_file:
+                shutil.copyfileobj(response, out_file)
+    # extract pickle from zip and erase zip
+    if name.endswith('.zip'):
+        with zipfile.ZipFile(cache, 'r') as zip_ref:
+            zip_ref.extractall(folder)
+        if os.path.isfile(cache):
+            os.remove(cache)
+    print('downloaded pickle from rescorces')
+    
+    
 def erase(generation, path=r'rawData/'):
     fileName = path + generation + '.zip'
     if os.path.isfile(fileName):
@@ -168,13 +191,55 @@ def convert_goal(df):
     df.drop(ind, inplace=True)
 
 
-def extract_creator(df):
-    pat = '\A{"id":([0-9]*),'
-    ids = df['creator']
-    ids = ids.map(lambda x: int(re.search(pat, x).group(1)))
-    df['creator'] = ids
+def extract_creator_id(df):
+    # jsons in table are broken, as user names contain quotes or commas which are not escaped in json (kickstarter, Realy?!)
+    # Note to self, register to kickstarter as '; * drop tables --'
+    #escape_quotes = lambda row: re.sub(r'([^:,{}])(")([^:,{}])',r'\1\"\3',row.creator)
+    escape_quotes = lambda row: re.sub(r'("[^"]*":)("[^"\\]*)(")([^"]*)(")([^"\\]*",)',r'\1\2\"\4\"\6',row.creator)
+    df['creator'] = df.apply(escape_quotes , axis=1)
+    escape_uneven_quotes = lambda row: re.sub(r'([A-Za-z])"([A-Za-z])',r'\1\"\2',row.creator)
+    df['creator'] = df.apply(escape_uneven_quotes , axis=1)
+    #parse creator id out of the now legal json
+    df['creator id'] = df.apply(get_creator_id , axis=1)
 
 
+# seperated to enable error handling
+def get_creator_id(row):
+    try:
+        return json.loads(row['creator'])['id']
+    except:
+        return -1
+
+    
+def extract_creator_fields(df):
+    get_registration_stat = lambda row: json.loads(row.creator).get('is_registered','unknown')
+    df['creator status'] = df.apply(get_registration_stat , axis=1)
+    get_creator_photo = lambda row: json.loads(row.creator).get('avatar').get('medium')
+    df['creator photo'] = df.apply(get_creator_photo , axis=1)
+    get_superbacker = lambda row: json.loads(row.creator).get('is_superbacker','unkown')
+    df['super creator'] = df.apply(get_superbacker , axis=1)
+
+    
+def get_creator_history(df):
+    counts = df['creator id'].value_counts()
+    # subtract one as we don't want to count the current project
+    get_history = lambda row : counts[row['creator id']] - 1
+    df['creator_past_proj'] = df.apply(get_history, axis=1)
+    winners = df.loc[df['state'] == 'successful']
+    win_counts = winners['creator id'].value_counts()
+    df['creator_successes'] = df.apply(get_succes, axis=1, counts = win_counts)
+    # Tenerary clause if due to the fact that if the project is successful, it was excluded twice (in total count and in succ. count)
+    get_unsuc = lambda row : row['creator_past_proj'] - row['creator_successes'] if row['state'] == 'successful' else row['creator_past_proj'] - row['creator_successes']
+    df['creator_unsuccesses'] = df.apply(get_unsuc, axis=1)
+    
+def get_succes(row, counts = None):
+    try:
+        # we subtract the 1 as we don't want to consider the current project twards project's history.
+        return counts[row['creator id']] - 1
+    except KeyError:
+        return 0
+    
+    
 def extract_catagories(df):
     cats = df['category']
     cats = cats.apply(json.loads)
@@ -201,16 +266,30 @@ def remove_duplicates(df):
     df.drop_duplicates(subset='id', inplace=True)
 
 
-def drop_lives(df):
-    ind = df[df['state'] == 'live'].index
-    df.drop(ind, inplace=True)
-
-
 def fix_state(df):
-    drop_lives(df)
-    stat = df['state'].map(lambda x: x if x == 'successful' else 'failed')
-    df['state'] = stat
+    df.drop(df[~df.state.isin(['successful','failed'])].index, inplace=True)
 
+
+def extract_country(df):
+    # handle cases where there is no location field (just take from country)
+    fix_nan = lambda row: '{{"country" : "{}", "state":"unknown"}}'.format(row['country']) if (isinstance(row.location, float) and np.isnan(row.location)) else row['location']
+    df['location'] = df.apply(lambda row: fix_nan(row), axis=1)
+    # Extract the country column from json
+    country_from_json = lambda j : json.loads(j)['country']
+    df['country'] = df.apply(lambda row: country_from_json(row['location']), axis=1)
+
+
+def unify_countries(df, counts, threshold):
+    unify_less_frequent = lambda row: 'Global' if counts[row['country']]<=threshold else row['country']
+    df['country'] = df.apply(lambda row: unify_less_frequent(row), axis=1)
+    
+    
+def get_us_state(df):
+    states = set(['WA', 'DE', 'DC', 'WI', 'WV', 'HI', 'FL', 'FM', 'WY', 'NH', 'NJ', 'NM', 'TX', 'LA', 'NC', 'ND', 'NE', 'TN', 'NY', 'PA', ' V', 'CA', 'NV', 'VA', 'GU', 'CO', 'PW', 'AK', 'AL', 'AS', 'AR', 'VT', 'IL', 'GA', 'IN', 'IA', 'OK', 'AZ', 'ID', 'CT', 'ME', 'MD', 'MA', 'OH', 'UT', 'MO', 'MN', 'MI', 'MH', 'RI', 'KS', 'MT', 'MP', 'MS', 'PR', 'SC', 'KY', 'OR', 'SD'])
+    fix_nan = lambda row: '{"state":"unknown"}' if (isinstance(row.location,float) and np.isnan(row.location) and row.country == 'US') else row.location
+    df['location'] = df.apply(lambda row: fix_nan(row), axis=1)
+    state_from_json = lambda j : json.loads(j)['state'] if json.loads(j)['state'] is not None and json.loads(j)['state'] in states else 'unknown'
+    df['country'] = df.apply(lambda row: 'US ' + state_from_json(row['location']) if row['country']=='US' else row['country'], axis=1)
 
 def encode_string_enums(df, col, str_values, number_values):
     mapping = {str_val: number_val for str_val, number_val in zip(str_values, number_values)}
@@ -229,12 +308,14 @@ def get_image_url(df):
     df['photo'] = imgs
 
 
-def download_photos(df, folder='tmp'):
+def download_photos(df, url_column = 'photo', name_column = 'id', folder='tmp'):
     folder = os.path.join(os.getcwd(), folder)
     if not os.path.exists(folder):
         os.makedirs(folder)
         print('created folder')
-    for url, idnum in zip(df['photo'], df['id']):
+    for i, (url, idnum) in enumerate(zip(df[url_column], df[name_column])):
+        if (i%10000 == 0):
+            print('downloaded {} images'.format(i))
         try:
             with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(idnum)), 'wb+') as out_file:
                 shutil.copyfileobj(response, out_file)
@@ -242,19 +323,7 @@ def download_photos(df, folder='tmp'):
             with open('bad_images.txt', 'a+') as f:
                     f.write(str(idnum) + '\n')
                     continue
-                    
-                
     print('Downloaded {} images'.format(str(len(df))))
-    
-    
-def download_cache(cache):
-    name = os.path.split(cache)[-1]
-    url = caches_urls.get(name,None)
-    if url is None:
-        raise Exception('No url for file')
-    with urllib.request.urlopen(url) as response, open(cache, 'wb+') as out_file:
-                shutil.copyfileobj(response, out_file)
-    print('downloaded pickle from rescorces')
     
     
 def erase_photos(folder):
@@ -263,8 +332,8 @@ def erase_photos(folder):
     shutil.rmtree(folder)
     
 
-
-def add_nima(df, jsonFile, columnName):
+    
+def add_nima(df, jsonFile, columnName, image_name_is_project = 'id'):
     if columnName in df.columns:
         print('Data already in dataset!')
         return
@@ -276,14 +345,14 @@ def add_nima(df, jsonFile, columnName):
             try:
                 iid = int(record.get('image_id'))
                 score = record.get('mean_score_prediction')
-                df.loc[df['id']==iid, columnName] = score
+                df.loc[df[image_name_is_project]==iid, columnName] = score
                 if i % 10000 == 0:
                     print ('done with record {}'.format(i))
             except KeyError:
                 # if this project was dropped from the dataframe for some reason as the dataset changes.
+                print('key error')
                 continue
-
-                
+            
                 
 # Add the pdf value for each score, for each distribution
 def add_NIMA_probs(df, succesful_mean, succesful_std, failed_mean, failed_std):
@@ -305,4 +374,6 @@ def unified_NIMA(df):
 
 
 if __name__ == '__main__':
-    make_dataframe(path=r'rawData', cache='rick.pickle')
+    df = get_pickles('creators.pickle')
+    download_photos(df, url_column = 'creator photo', name_column = 'creator id', folder='creator photos')
+    

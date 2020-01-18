@@ -20,7 +20,7 @@ def plot_success_failure(df, col, ax=None):
     sc = suc[col].value_counts()
     sf = f[col].value_counts()
     d = pd.DataFrame({'Successful': sc, 'failed': sf})
-    d.plot(ax=ax, kind='bar')
+    d.plot(ax=ax, kind='bar',figsize=[20, 10])
 
 
 def plot_success_by_country(df):
@@ -61,6 +61,17 @@ def plot_success_by_launched_month(df):
     plt.title('Success by the month of campaign launch')
     plt.show()
 
+    
+def plot_sccess_by_creator_history(df):
+    plot_success_failure(df, 'creator_past_proj')
+    plt.title('Success by number of creator\'s past projects, excluding current')
+    plt.show()
+    plot_success_failure(df, 'creator_successes')
+    plt.title('Success by number of creator\'s succesfull past projects, excluding current')
+    plt.show()
+    plot_success_failure(df, 'creator_unsuccesses')
+    plt.title('Success by number of creator\'s un-succesfull past projects, excluding current')
+    plt.show()
 
 def plot_distribution_by_state(df):
     state = round(df["state"].value_counts() / len(df["state"]) * 100, 2)
@@ -137,18 +148,18 @@ def plot_success_over_time(df):
 
 
 # Samples 
-def display_imgs(df):
+def display_imgs(df, score_column = 'nima_score', photo_column = 'photo'):
     # sort dataset for easy access to edges.
-    ranks = df.sort_values(by='nima_score', ascending=False, inplace=False)
+    ranks = df.sort_values(by=score_column, ascending=False, inplace=False)
     # pick 9 random numbers
     picks = np.random.randint(0,200,9)
     f, axarr = plt.subplots(3,3,figsize=[20, 10])
     # get images from url, and desplay their rating and status
     for i, pic in enumerate(picks):
-        img = urllib.request.urlopen(ranks.iloc[pic].photo)
+        img = urllib.request.urlopen(ranks.iloc[pic][photo_column])
         a = plt.imread(img,0)
         axarr[i//3,i%3].imshow(a)
-        axarr[i//3,i%3].set_title('NIMA score: {:.2f}    state: {}'.format(ranks.iloc[pic].nima_score, ranks.iloc[pic].state))
+        axarr[i//3,i%3].set_title('NIMA score: {:.2f}    state: {}'.format(ranks.iloc[pic][score_column], ranks.iloc[pic].state))
     # remove plt junk
     for ax in f.axes:
         ax.axis("off")
@@ -159,10 +170,10 @@ def display_imgs(df):
     picks = np.random.randint(0,200,9) * -1
     f, axarr = plt.subplots(3,3,figsize=[20, 10])
     for i, pic in enumerate(picks):        
-        img = urllib.request.urlopen(ranks.iloc[pic].photo)
+        img = urllib.request.urlopen(ranks.iloc[pic][photo_column])
         a = plt.imread(img,0)
         axarr[i//3,i%3].imshow(a)
-        axarr[i//3,i%3].set_title('NIMA score: {:.2f}    state: {}'.format(ranks.iloc[pic].nima_score, ranks.iloc[pic].state))
+        axarr[i//3,i%3].set_title('NIMA score: {:.2f}    state: {}'.format(ranks.iloc[pic][score_column], ranks.iloc[pic].state))
     for ax in f.axes:
         ax.axis("off")
     plt.rcParams["axes.grid"] = False
