@@ -20,7 +20,7 @@ def run_model(df, input_fields = None, nima = False):
     scaler.fit(X_train)
     X_train = scaler.transform(X_train)
     X_test = scaler.transform(X_test)
-    print('running logistic regression no nlp')
+    print('running logistic regression')
     regression = LogisticRegression()
     regression.fit(X_train, y_train)
     pred = regression.predict(X_test)
