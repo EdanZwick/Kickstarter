@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 
 import dataCleaning as dc
+import kickstarter.data_loader
 
 DF_CACHE = "clean_df.pickle"
 
@@ -32,7 +33,7 @@ def _get_cleaned_df() -> pd.DataFrame:
         with open(DF_CACHE, "rb") as f:
             return pickle.load(f)
 
-    df = dc.make_dataframe()
+    df = kickstarter.data_loader.make_dataframe()
     redundant = ['country_displayable_name', 'currency_symbol', 'currency_trailing_code', 'current_currency',
                  'source_url', 'disable_communication', 'profile', 'urls', 'photo', 'usd_pledged',
                  'usd_type']
@@ -43,7 +44,7 @@ def _get_cleaned_df() -> pd.DataFrame:
     dc.convert_time(df, timefields)
     dc.extract_creator(df)  # replaces the creator json with creator id int
     dc.extract_catagories(df)  # gets project catagory data
-    dc.remove_duplicates(df)
+    kickstarter.data_loader._remove_duplicates(df)
     dc.convert_goal(df)
     dc.extract_month_and_year(df, timefields)
     dc.add_destination_delta_in_days(df)
