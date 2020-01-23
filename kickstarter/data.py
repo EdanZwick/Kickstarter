@@ -1,5 +1,4 @@
 from typing import List
-
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
@@ -15,8 +14,12 @@ class Data:
         self.le = LabelEncoder()
         self.input_fields = input_fields
         self.label = label
-        y = self.le.fit_transform(df[label])
+        y = pd.Series(self.le.fit_transform(df[label]), index=df.index)
         self.train_df, self.test_df, self.train_y, self.test_y = train_test_split(df, y, test_size=0.2, random_state=42)
+
+    @property
+    def df(self):
+        return pd.concat([self.train_df, self.test_df])
 
     @property
     def train_x(self) -> pd.DataFrame:

@@ -3,9 +3,20 @@ import json
 import shutil
 import numpy as np
 
+from kickstarter.data import Data
 
-def fix_state(df):
-    df.drop(df[~df.state.isin(['successful', 'failed'])].index, inplace=True)
+
+def fix_state(data: Data):
+    wanted_labels = data.le.transform(['successful', 'failed'])
+
+    train_index_to_remove = data.train_y[~data.train_y.isin(wanted_labels)].index
+    test_index_to_remove = data.test_y[~data.test_y.isin(wanted_labels)].index
+
+    data.train_df.drop(train_index_to_remove, inplace=True)
+    data.train_y.drop(train_index_to_remove, inplace=True)
+
+    data.test_df.drop(test_index_to_remove, inplace=True)
+    data.test_y.drop(test_index_to_remove, inplace=True)
 
 
 def extract_country(df):
