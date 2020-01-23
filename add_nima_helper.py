@@ -1,6 +1,10 @@
-import dataCleaning as dc
-import kickstarter.data_loader
+import kickstarter.nima
+from kickstarter.data_loader import get_pickles
 
-df = kickstarter.data_loader.get_pickles('with_NIMA.pickle')
-dc.add_nima(df, jsonFile='NIMA predictions/predictions_imgs_all_technical.json', columnName = 'nima_tech')
-df.to_pickle('pickled_data/with_NIMA.pickle')
+def _download_nima_pickle():
+    df = get_pickles('with_NIMA.pickle')
+    kickstarter.nima.add_nima(df, jsonFile='NIMA predictions/predictions_imgs_all_technical.json', columnName='nima_tech')
+    df.to_pickle('pickled_data/with_NIMA.pickle')
+
+
+_download_nima_pickle()
