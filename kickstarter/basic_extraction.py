@@ -71,3 +71,12 @@ def get_image_url(df):
     imgs = imgs.apply(json.loads)
     imgs = imgs.map(lambda x: x.get('full', 0))
     df['photo'] = imgs
+
+
+def extract_creator_fields(df):
+    get_registration_stat = lambda row: json.loads(row.creator).get('is_registered', 'unknown')
+    df['creator_status'] = df.apply(get_registration_stat, axis=1)
+    get_creator_photo = lambda row: json.loads(row.creator).get('avatar').get('medium')
+    df['creator_photo'] = df.apply(get_creator_photo, axis=1)
+    get_superbacker = lambda row: json.loads(row.creator).get('is_superbacker', 'unkown')
+    df['super_creator'] = df.apply(get_superbacker, axis=1)

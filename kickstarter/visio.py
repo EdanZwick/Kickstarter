@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import dataCleaning as dc
 import seaborn as sns
 import pandas as pd
 import urllib.request

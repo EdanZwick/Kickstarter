@@ -1,13 +1,14 @@
 import numpy as np
 import pandas as pd
 
-from nltk.corpus import stopwords
 from sklearn.feature_extraction.text import CountVectorizer
+
+from kickstarter.transformers._base.base_transformer import BaseTransformer
 
 BATCH_SIZE = 10000
 
 
-class BagOfWords:
+class BagOfWords(BaseTransformer):
     def __init__(self) -> None:
         self._vectorizer = CountVectorizer(min_df=0.0001, stop_words=set(stopwords.words('english')))
         self._true_proba = None  # P(y=1|x)
@@ -36,10 +37,6 @@ class BagOfWords:
 
         return pd.Series(result)
 
-    def fit_transform(self, x: np.ndarray, y: np.ndarray) -> pd.Series:
-        self.fit(x, y)
-        return self.transform(x)
-
     @staticmethod
     def _get_proba(transformed_x: np.ndarray, proba_vector: np.ndarray) -> np.ndarray:
         # P(y| #{x_i} ) = P(y | x_i)^#{x_i}
@@ -49,6 +46,7 @@ class BagOfWords:
         prob = np.prod(prob, axis=1)
 
         return np.where(prob == 1, 0, prob)
+
 
 if __name__ == '__main__':
     from sklearn.feature_extraction.text import TfidfVectorizer
