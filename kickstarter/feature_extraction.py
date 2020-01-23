@@ -1,52 +1,7 @@
-from datetime import datetime
 import json
-import re
 
 import shutil
 import numpy as np
-
-
-def convert_time(df, timefields):
-    for col in timefields:
-        df[col] = df[col].apply(datetime.utcfromtimestamp)
-
-
-def extract_month_and_year(df, timefields):
-    for col in timefields:
-        months = []
-        years = []
-        for row in df[col]:
-            months.append(row.month)
-            years.append(row.year)
-        df[col + '_month'] = months
-        df[col + '_year'] = years
-
-
-def convert_goal(df):
-    df['goal'] = df.apply(lambda row: round(row['goal'] * row['static_usd_rate']), axis=1)
-    df.drop(columns='static_usd_rate', inplace=True)
-    ind = df[df['goal'] == 0].index
-    df.drop(ind, inplace=True)
-
-
-def extract_creator_id(df):
-    # jsons in table are broken, as user names contain quotes or commas which are not escaped in json (kickstarter, Realy?!)
-    # Note to self, register to kickstarter as '; * drop tables --'
-    # escape_quotes = lambda row: re.sub(r'([^:,{}])(")([^:,{}])',r'\1\"\3',row.creator)
-    escape_quotes = lambda row: re.sub(r'("[^"]*":)("[^"\\]*)(")([^"]*)(")([^"\\]*",)', r'\1\2\"\4\"\6', row.creator)
-    df['creator'] = df.apply(escape_quotes, axis=1)
-    escape_uneven_quotes = lambda row: re.sub(r'([A-Za-z])"([A-Za-z])', r'\1\"\2', row.creator)
-    df['creator'] = df.apply(escape_uneven_quotes, axis=1)
-    # parse creator id out of the now legal json
-    df['creator_id'] = df.apply(get_creator_id, axis=1)
-
-
-# seperated to enable error handling
-def get_creator_id(row):
-    try:
-        return json.loads(row['creator'])['id']
-    except:
-        return -1
 
 
 def extract_creator_fields(df):
@@ -65,40 +20,19 @@ def get_creator_history(df):
     df['creator_past_proj'] = df.apply(get_history, axis=1)
     winners = df.loc[df['state'] == 'successful']
     win_counts = winners['creator id'].value_counts()
-    df['creator_successes'] = df.apply(get_succes, axis=1, counts=win_counts)
+    df['creator_successes'] = df.apply(_get_success, axis=1, counts=win_counts)
     # Tenerary clause if due to the fact that if the project is successful, it was excluded twice (in total count and in succ. count)
     get_unsuc = lambda row: row['creator_past_proj'] - row['creator_successes'] if row['state'] == 'successful' else \
-    row['creator_past_proj'] - row['creator_successes']
+        row['creator_past_proj'] - row['creator_successes']
     df['creator_unsuccesses'] = df.apply(get_unsuc, axis=1)
 
 
-def get_succes(row, counts=None):
+def _get_success(row, counts=None):
     try:
         # we subtract the 1 as we don't want to consider the current project twards project's history.
         return counts[row['creator id']] - 1
     except KeyError:
         return 0
-
-
-def extract_catagories(df):
-    cats = df['category']
-    cats = cats.apply(json.loads)
-
-    parent_cats_ids = []
-    parent_cats_names = []
-    cats_ids = []
-    cats_names = []
-
-    for cat in cats:
-        parent_cats_ids.append(int(cat.get('parent_id', 0)))
-        parent_cats_names.append(cat.get('slug', '/').split('/')[0].lower())
-        cats_ids.append(int(cat.get('id', 0)))
-        cats_names.append(cat.get('name', "").lower())
-
-    df['category'] = cats_ids
-    df['parent_category'] = parent_cats_ids
-    df['category_name'] = cats_names
-    df['parent_category_name'] = parent_cats_names
 
 
 def fix_state(df):
@@ -108,7 +42,7 @@ def fix_state(df):
 def extract_country(df):
     # handle cases where there is no location field (just take from country)
     fix_nan = lambda row: '{{"country" : "{}", "state":"unknown"}}'.format(row['country']) if (
-                isinstance(row.location, float) and np.isnan(row.location)) else row['location']
+            isinstance(row.location, float) and np.isnan(row.location)) else row['location']
     df['location'] = df.apply(lambda row: fix_nan(row), axis=1)
     # Extract the country column from json
     country_from_json = lambda j: json.loads(j)['country']
@@ -127,7 +61,7 @@ def get_us_state(df):
          'OK', 'AZ', 'ID', 'CT', 'ME', 'MD', 'MA', 'OH', 'UT', 'MO', 'MN', 'MI', 'MH', 'RI', 'KS', 'MT', 'MP', 'MS',
          'PR', 'SC', 'KY', 'OR', 'SD'])
     fix_nan = lambda row: '{"state":"unknown"}' if (
-                isinstance(row.location, float) and np.isnan(row.location) and row.country == 'US') else row.location
+            isinstance(row.location, float) and np.isnan(row.location) and row.country == 'US') else row.location
     df['location'] = df.apply(lambda row: fix_nan(row), axis=1)
     state_from_json = lambda j: json.loads(j)['state'] if json.loads(j)['state'] is not None and json.loads(j)[
         'state'] in states else 'unknown'
@@ -145,17 +79,7 @@ def add_destination_delta_in_days(df):
     df['destination_delta_in_days'] = df.apply(lambda row: delta(row), axis=1)
 
 
-def get_image_url(df):
-    imgs = df['photo']
-    imgs = imgs.apply(json.loads)
-    imgs = imgs.map(lambda x: x.get('full', 0))
-    df['photo'] = imgs
-
-
 def erase_photos(folder):
     if folder is None:
         raise ValueError('No path to delete')
     shutil.rmtree(folder)
-
-
-

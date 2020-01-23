@@ -6,8 +6,6 @@ from sklearn.model_selection import KFold
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.preprocessing import StandardScaler
 
-from data_loader import get_data
-
 N_SPLITS = 5
 
 
