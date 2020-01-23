@@ -6,7 +6,7 @@ import zipfile
 import pandas as pd
 import urllib.request
 from urllib.error import HTTPError
-from dataset_generations import datasets
+from kickstarter.dataset_generations import datasets
 from kickstarter.logger import logger
 
 _caches_urls = {
