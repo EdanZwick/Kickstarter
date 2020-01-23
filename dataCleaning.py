@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 import scipy.stats
 from dataset_generations import datasets
+from kickstarter.logger import logger
 
 caches_urls = {
 'rick.pickle' : 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1/rick.pickle.zip',
@@ -35,18 +36,18 @@ def make_dataframe(path=r'rawData', out=None,
         df = get_pickles(cache)
         return df
     if out is not None and os.path.isfile(out):
-        print('read dataframe from csv file', os.path.join(os.getcwd(), out), sep=' ')
+        logger.info('read dataframe from csv file', os.path.join(os.getcwd(), out), sep=' ')
         return pd.read_csv(os.path.join(os.getcwd(), out))
     # log datasets that did not load well, without ending the whole process.
     with open('bad_data_sets.txt', 'w+') as f:
         f.write('bad data sets: \n')
     df = pd.DataFrame()  # Initial dataframe that will be grown
-    print('Downloading datasets, expect this to take a few minutes')
+    logger.info('Downloading datasets, expect this to take a few minutes')
     for key in datasets:
         try:
-            print('Downloading {}'.format(key))
+            logger.debug('Downloading {}'.format(key))
             download_extract(key)  # Downloads this data set as zip and extracts it.
-            print('Merging {}'.format(key))
+            logger.debug('Merging {}'.format(key))
             new = makeSingleDf(path + '/' + key)  # Merges the 50+- CSVs in this generation to a single df
             # We used to do this later, but it seems that there are too much lives in this new dataset We now will
             # drop them so if there is any finalized version, it will win de-duping (was already not supposed to happen)
@@ -57,17 +58,17 @@ def make_dataframe(path=r'rawData', out=None,
             with open('bad_data_sets.txt', 'a+') as f:
                 f.write(key + '\n')
             erase(key)
-            print(e)
+            logger.exception(e)
             continue
     # if any record has null id, erase it:
     df.dropna(subset=['id'], inplace=True)
-    print('there are ', len(df.index), ' records in data set', sep='')
+    logger.info('there are ', len(df.index), ' records in data set', sep='')
     # save united dataset to csv or pickle.
     if out is not None:
         df.to_csv(path_or_buf=out, chunksize=10000)
     if cache is not None:
         df.to_pickle(path=cache)
-        print('Saved data frame to', cache)
+        logger.info('Saved data frame to', cache)
     return df
 
 
@@ -80,11 +81,11 @@ def get_pickles(cache):
         try:
             download_cache(cache)
         except Exception as e:
-            print(e)
-            print('No such pickle file exists on your computer or web')
+            logger.exception(e)
+            logger.error('No such pickle file exists on your computer or web')
             return None
     df = pd.read_pickle(cache)
-    print('read dataframe from cache', cache, sep=' ')
+    logger.info('read dataframe from cache', cache, sep=' ')
     return df
 
 
@@ -94,7 +95,7 @@ def makeSingleDf(path):
         if fileName.endswith('.csv'):
             chunk = pd.read_csv(os.path.join(path, fileName))
             chunk_list.append(chunk)
-    print('Read ', len(chunk_list), 'csv files')
+    logger.info('Read ', len(chunk_list), 'csv files')
     df = pd.concat(chunk_list, ignore_index=True)
     return df
 
@@ -105,7 +106,7 @@ def downloadData(path=r'rawData/'):
         os.makedirs(directory)
     for generation in datasets:
         downloadFile(path + generation + '.zip', datasets[generation])
-        print('Downloaded', generation, sep=' ')
+        logger.info('Downloaded', generation, sep=' ')
 
 
 def downloadFile(fileName, url, path=r'rawData/'):
@@ -114,16 +115,16 @@ def downloadFile(fileName, url, path=r'rawData/'):
         os.makedirs(directory)
     # fileName = path + fileName
     if os.path.isfile(fileName) or os.path.exists(fileName[:-4]):
-        print('file {} already downloaded'.format(fileName))
+        logger.info('file {} already downloaded'.format(fileName))
         return
     with urllib.request.urlopen(url) as response, open(fileName, 'wb+') as out_file:
         shutil.copyfileobj(response, out_file)
-    print('downloaded {}'.format(fileName))
+    logger.info('downloaded {}'.format(fileName))
 
 
 def download_extract(generation, path=r'rawData/'):
     downloadFile(path + generation + '.zip', datasets[generation])
-    print('extracting')
+    logger.info('extracting')
     extract(path + generation)
 
     
@@ -146,7 +147,7 @@ def download_cache(cache):
             zip_ref.extractall(folder)
         if os.path.isfile(cache):
             os.remove(cache)
-    print('downloaded pickle from rescorces')
+    logger.info('downloaded pickle from rescorces')
     
     
 def erase(generation, path=r'rawData/'):
@@ -155,13 +156,13 @@ def erase(generation, path=r'rawData/'):
         os.remove(fileName)
     if os.path.exists(path + generation + '/'):
         shutil.rmtree(path + generation + '/')
-        print('erased {}'.format(generation))
+        logger.info('erased {}'.format(generation))
 
 
 def extract(fileName):
     directory = fileName + '/'
     if os.path.exists(directory):
-        print(directory, ' exists', sep=' ')
+        logger.info(directory, ' exists', sep=' ')
         return
     os.makedirs(directory)
     with zipfile.ZipFile(fileName + '.zip', 'r') as zip_ref:
@@ -200,7 +201,7 @@ def extract_creator_id(df):
     escape_uneven_quotes = lambda row: re.sub(r'([A-Za-z])"([A-Za-z])',r'\1\"\2',row.creator)
     df['creator'] = df.apply(escape_uneven_quotes , axis=1)
     #parse creator id out of the now legal json
-    df['creator id'] = df.apply(get_creator_id , axis=1)
+    df['creator_id'] = df.apply(get_creator_id , axis=1)
 
 
 # seperated to enable error handling
@@ -213,11 +214,11 @@ def get_creator_id(row):
     
 def extract_creator_fields(df):
     get_registration_stat = lambda row: json.loads(row.creator).get('is_registered','unknown')
-    df['creator status'] = df.apply(get_registration_stat , axis=1)
+    df['creator_status'] = df.apply(get_registration_stat , axis=1)
     get_creator_photo = lambda row: json.loads(row.creator).get('avatar').get('medium')
-    df['creator photo'] = df.apply(get_creator_photo , axis=1)
+    df['creator_photo'] = df.apply(get_creator_photo , axis=1)
     get_superbacker = lambda row: json.loads(row.creator).get('is_superbacker','unkown')
-    df['super creator'] = df.apply(get_superbacker , axis=1)
+    df['super_creator'] = df.apply(get_superbacker , axis=1)
 
     
 def get_creator_history(df):
@@ -312,10 +313,10 @@ def download_photos(df, url_column = 'photo', name_column = 'id', folder='tmp'):
     folder = os.path.join(os.getcwd(), folder)
     if not os.path.exists(folder):
         os.makedirs(folder)
-        print('created folder')
+        logger.info('created folder')
     for i, (url, idnum) in enumerate(zip(df[url_column], df[name_column])):
         if (i%10000 == 0):
-            print('downloaded {} images'.format(i))
+            logger.info('downloaded {} images'.format(i))
         try:
             with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(idnum)), 'wb+') as out_file:
                 shutil.copyfileobj(response, out_file)
@@ -323,7 +324,7 @@ def download_photos(df, url_column = 'photo', name_column = 'id', folder='tmp'):
             with open('bad_images.txt', 'a+') as f:
                     f.write(str(idnum) + '\n')
                     continue
-    print('Downloaded {} images'.format(str(len(df))))
+    logger.info('Downloaded {} images'.format(str(len(df))))
     
     
 def erase_photos(folder):
@@ -335,22 +336,22 @@ def erase_photos(folder):
     
 def add_nima(df, jsonFile, columnName, image_name_is_project = 'id'):
     if columnName in df.columns:
-        print('Data already in dataset!')
+        logger.info('Data already in dataset!')
         return
-    print('opening json')
+    logger.info('opening json')
     with open(jsonFile) as jf:
         scores = json.load(jf)
-        print('there are {} recordes in json'.format(len(scores)))
+        logger.info('there are {} recordes in json'.format(len(scores)))
         for i, record in enumerate(scores):
             try:
                 iid = int(record.get('image_id'))
                 score = record.get('mean_score_prediction')
                 df.loc[df[image_name_is_project]==iid, columnName] = score
                 if i % 10000 == 0:
-                    print ('done with record {}'.format(i))
+                    logger.info ('done with record {}'.format(i))
             except KeyError:
                 # if this project was dropped from the dataframe for some reason as the dataset changes.
-                print('key error')
+                logger.info('key error')
                 continue
             
                 
