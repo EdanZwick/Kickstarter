@@ -9,7 +9,7 @@ from urllib.error import HTTPError
 from dataset_generations import datasets
 from kickstarter.logger import logger
 
-caches_urls = {
+_caches_urls = {
     'rick.pickle': 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1/rick.pickle.zip',
     'with_NIMA.pickle': 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1.1/with_NIMA.pickle.zip'}
 
@@ -44,18 +44,18 @@ def make_dataframe(path=r'rawData', out=None,
     for key in datasets:
         try:
             logger.debug('Downloading {}'.format(key))
-            download_extract(key)  # Downloads this data set as zip and extracts it.
+            _download_extract(key)  # Downloads this data set as zip and extracts it.
             logger.debug('Merging {}'.format(key))
-            new = makeSingleDf(path + '/' + key)  # Merges the 50+- CSVs in this generation to a single df
+            new = _make_single_df(path + '/' + key)  # Merges the 50+- CSVs in this generation to a single df
             # We used to do this later, but it seems that there are too much lives in this new dataset We now will
             # drop them so if there is any finalized version, it will win de-duping (was already not supposed to happen)
             df = pd.concat([df, new], ignore_index=True, sort=True)
             _remove_duplicates(df)
-            erase(key)
+            _erase(key)
         except Exception as e:
             with open('bad_data_sets.txt', 'a+') as f:
                 f.write(key + '\n')
-            erase(key)
+            _erase(key)
             logger.exception(e)
             continue
     # if any record has null id, erase it:
@@ -77,7 +77,7 @@ def get_pickles(cache):
         os.makedirs(cache_folder)
     if not os.path.isfile(cache):
         try:
-            download_cache(cache)
+            _download_cache(cache)
         except Exception as e:
             logger.exception(e)
             logger.error('No such pickle file exists on your computer or web')
@@ -87,7 +87,7 @@ def get_pickles(cache):
     return df
 
 
-def makeSingleDf(path):
+def _make_single_df(path):
     chunk_list = []
     for fileName in sorted(os.listdir(path)):  # Sort to be deterministic
         if fileName.endswith('.csv'):
@@ -98,7 +98,7 @@ def makeSingleDf(path):
     return df
 
 
-def downloadFile(fileName, url, path=r'rawData/'):
+def _download_file(fileName, url, path=r'rawData/'):
     directory = os.path.dirname(path)
     if not os.path.exists(directory):
         os.makedirs(directory)
@@ -111,15 +111,15 @@ def downloadFile(fileName, url, path=r'rawData/'):
     logger.info('downloaded {}'.format(fileName))
 
 
-def download_extract(generation, path=r'rawData/'):
-    downloadFile(path + generation + '.zip', datasets[generation])
+def _download_extract(generation, path=r'rawData/'):
+    _download_file(path + generation + '.zip', datasets[generation])
     logger.info('extracting')
-    extract(path + generation)
+    _extract(path + generation)
 
 
-def download_cache(cache):
+def _download_cache(cache):
     name = os.path.split(cache)[-1]
-    url = caches_urls.get(name, None)
+    url = _caches_urls.get(name, None)
     if url is None:
         raise Exception('No url for file')
     if url.endswith('.zip'):
@@ -139,7 +139,7 @@ def download_cache(cache):
     logger.info('downloaded pickle from rescorces')
 
 
-def erase(generation, path=r'rawData/'):
+def _erase(generation, path=r'rawData/'):
     fileName = path + generation + '.zip'
     if os.path.isfile(fileName):
         os.remove(fileName)
@@ -148,7 +148,7 @@ def erase(generation, path=r'rawData/'):
         logger.info('erased {}'.format(generation))
 
 
-def extract(fileName):
+def _extract(fileName):
     directory = fileName + '/'
     if os.path.exists(directory):
         logger.info(directory, ' exists', sep=' ')
@@ -168,7 +168,7 @@ def downloadData(path=r'rawData/'):  # TODO: unused. delete this
     if not os.path.exists(directory):
         os.makedirs(directory)
     for generation in datasets:
-        downloadFile(path + generation + '.zip', datasets[generation])
+        _download_file(path + generation + '.zip', datasets[generation])
         logger.info('Downloaded', generation, sep=' ')
 
 
