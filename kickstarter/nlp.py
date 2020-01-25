@@ -2,7 +2,6 @@ import os
 import re
 import pandas as pd
 from gensim.models import FastText
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 import nltk
 
 from kickstarter.logger import logger
@@ -29,24 +28,6 @@ def make_word_embeddings(df):
     df['name_nlp'] = df.apply(lambda row: sum([model.wv[re.sub("[^A-Za-z']", ' ', s.lower().strip())] for s in
                                                (row["name"] + ' ' + str(row['blurb'])).split(' ')]), axis=1)
     logger.info('finished setting name_nlp column')
-
-
-def set_semantics(df):
-    analyser = SentimentIntensityAnalyzer()
-    neg = []
-    pos = []
-    compound = []
-
-    for row in df['blurb'].astype(str):
-        score = analyser.polarity_scores(str(row.encode("utf-8")))
-        neg.append(score['neg'])
-        pos.append(score['pos'])
-        compound.append(score['compound'])
-
-    df['blurb_pos'] = pos
-    df['blurb_neg'] = neg
-    df['blurb_compound'] = compound
-
 
 def avg_word(sentence):
     words = sentence.split()

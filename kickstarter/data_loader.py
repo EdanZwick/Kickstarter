@@ -5,7 +5,6 @@ import zipfile
 
 import pandas as pd
 import urllib.request
-from urllib.error import HTTPError
 from kickstarter.dataset_generations import datasets
 from kickstarter.logger import logger
 
@@ -170,26 +169,3 @@ def downloadData(path=r'rawData/'):  # TODO: unused. delete this
     for generation in datasets:
         _download_file(path + generation + '.zip', datasets[generation])
         logger.info('Downloaded', generation, sep=' ')
-
-
-def download_photos(df, url_column='photo', name_column='id', folder='tmp'):  # TODO: unused. delete this
-    folder = os.path.join(os.getcwd(), folder)
-    if not os.path.exists(folder):
-        os.makedirs(folder)
-        logger.info('created folder')
-    for i, (url, idnum) in enumerate(zip(df[url_column], df[name_column])):
-        if (i % 10000 == 0):
-            logger.info('downloaded {} images'.format(i))
-        try:
-            with urllib.request.urlopen(url) as response, open(os.path.join(folder, str(idnum)), 'wb+') as out_file:
-                shutil.copyfileobj(response, out_file)
-        except HTTPError as err:
-            with open('bad_images.txt', 'a+') as f:
-                f.write(str(idnum) + '\n')
-                continue
-    logger.info('Downloaded {} images'.format(str(len(df))))
-
-
-if __name__ == '__main__':
-    df = get_pickles('creators.pickle')
-    download_photos(df, url_column='creator photo', name_column='creator id', folder='creator photos')

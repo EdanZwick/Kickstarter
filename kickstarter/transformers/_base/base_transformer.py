@@ -8,7 +8,7 @@ class BaseTransformer(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def input_fields(self) -> List[str]:
+    def input_fields(self) -> str or List[str]:
         pass
 
     @abc.abstractmethod
