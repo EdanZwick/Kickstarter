@@ -16,10 +16,7 @@ def fix_state(data: Data):
     test_index_to_remove = data.test_y[~data.test_y.isin(wanted_labels)].index
 
     data.train_df.drop(train_index_to_remove, inplace=True)
-    data.train_y.drop(train_index_to_remove, inplace=True)
-
     data.test_df.drop(test_index_to_remove, inplace=True)
-    data.test_y.drop(test_index_to_remove, inplace=True)
 
 
 def extract_country(df):

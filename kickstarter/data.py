@@ -1,4 +1,5 @@
 from typing import List
+import numpy as np
 import pandas as pd
 
 from sklearn.model_selection import train_test_split
@@ -11,11 +12,11 @@ LABEL = 'state'
 
 class Data:
     def __init__(self, df: pd.DataFrame, input_fields: List[str] = None, label: str = LABEL) -> None:
-        self.le = LabelEncoder().fit(["failed", "successful"])  # To set FAIL=0 SUCCESS=1
+        self.le = LabelEncoder()
+        self.le.classes_ = np.array(['failed', 'successful', 'suspended', 'canceled'])  # To set FAIL=0 SUCCESS=1
         assert all(self.le.transform(["failed", "successful"]) == [0, 1])
         self.input_fields = input_fields
         self.label = label
-        self.le.fit(df[label])
         self.train_df, self.test_df = train_test_split(df, test_size=0.2, random_state=42)
 
     @property
