@@ -10,31 +10,6 @@ from tqdm import tqdm
 from kickstarter.logger import logger
 
 
-def add_nima(df, jsonFile, columnName, image_name_is_project='id'):
-    if columnName in df.columns:
-        logger.info('Data already in dataset!')
-        return
-    logger.info('opening json')
-    scores_dict = _load_scores_dict(jsonFile)
-
-    logger.info('there are {} recordes in json'.format(len(scores_dict)))
-    nima_records = []
-    for index, record in tqdm(df.iterrows()):
-        try:
-            iid = record[image_name_is_project]
-            nima_records.append(scores_dict[iid])
-        except KeyError:
-            # if this project was dropped from the dataframe for some reason as the dataset changes.
-            logger.info(f'key error {record[image_name_is_project]}')
-
-
-def _load_scores_dict(json_file: str) -> dict:
-    with open(json_file) as jf:
-        scores = json.load(jf)
-    scores_dict = {}
-    for score in scores:
-        scores_dict[int(score["image_id"])] = score["mean_score_prediction"]
-    return score
 # Add the pdf value for each score, for each distribution
 def add_NIMA_probs(df, succesful_mean, succesful_std, failed_mean, failed_std):
     success_dist = scipy.stats.norm(succesful_mean, succesful_std)
