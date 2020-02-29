@@ -10,7 +10,7 @@ from kickstarter.logger import logger
 
 _caches_urls = {
     'rick.pickle': 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1/rick.pickle.zip',
-    'with_NIMA.pickle': 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1.1/with_NIMA.pickle.zip'}
+    'with_NIMA.pickle': 'https://github.com/EdanZwick/kickstarter-resources/releases/download/1.2/with_NIMA.pickle.zip'}
 
 
 # Our data is originally split amongst many small csv files.
