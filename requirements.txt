@@ -9,3 +9,5 @@ gensim
 vaderSentiment
 nltk
 lightGBM
+tqdm
+pillow
